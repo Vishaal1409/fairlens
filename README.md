@@ -1,2 +1,2 @@
-# fairlens
-AI Fairness audit platform - h2s 2026
+# FairLens ⚖️
+   An open-source AI Fairness Audit Platform — detect, explain, and fix bias in any dataset or ML model.
