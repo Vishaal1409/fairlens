@@ -1,0 +1,18 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment (never copy into image)
+venv/
+.venv/
+
+# IDE / OS noise
+.DS_Store
+.idea/
+.vscode/
+
+# Test artefacts
+*.log
+*.csv
