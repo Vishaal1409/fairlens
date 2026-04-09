@@ -11,4 +11,6 @@ data = {
 
 df = pd.DataFrame(data)
 results = analyze(df, protected_col="gender", label_col="label", predicted_col="prediction")
-print("Results:", results)
+
+for metric, score in results.items():
+    print(f"{metric}: {score}")
