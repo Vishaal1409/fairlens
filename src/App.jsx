@@ -1,17 +1,24 @@
-import FileUploader from "./components/FileUploader";
-import MetricCard from "./components/MetricCard";
+import { useState } from "react";
+import Layout from "./pages/Layout";
+import UploadPage from "./pages/UploadPage";
+import ResultsPage from "./pages/ResultsPage";
+import ExplainabilityPage from "./pages/ExplainabilityPage";
+import MitigationPage from "./pages/MitigationPage";
+
+const pages = {
+  upload:         <UploadPage />,
+  results:        <ResultsPage />,
+  explainability: <ExplainabilityPage />,
+  mitigation:     <MitigationPage />,
+};
 
 function App() {
-  return (
-    <div className="p-10 space-y-6">
-      <FileUploader />
+  const [activePage, setActivePage] = useState("upload");
 
-      <div className="grid grid-cols-3 gap-4">
-        <MetricCard name="Fairness Score" score="85%" status="good" />
-        <MetricCard name="Bias Risk" score="40%" status="warning" />
-        <MetricCard name="Alert Level" score="70%" status="danger" />
-      </div>
-    </div>
+  return (
+    <Layout activePage={activePage} onNavigate={setActivePage}>
+      {pages[activePage]}
+    </Layout>
   );
 }
 
