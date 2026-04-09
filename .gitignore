@@ -20,3 +20,6 @@ env/
 # Uploaded files / test data
 *.csv
 *.log
+
+# Project documents (local reference only — not for version control)
+*.docx
