@@ -1,20 +1,34 @@
-import { useCallback } from 'react';
-import { useDropzone } from 'react-dropzone';
+import { useState } from "react";
+import { uploadFile } from "../api/client";
 
-export default function FileUploader() {
-  const onDrop = useCallback((acceptedFiles) => {
-    console.log("Uploaded file:", acceptedFiles[0].name);
-  }, []);
+function FileUploader() {
+  const [fileId, setFileId] = useState(null);
 
-  const { getRootProps, getInputProps } = useDropzone({ onDrop });
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      const res = await uploadFile(file);
+      console.log("Uploaded:", res);
+
+      setFileId(res.file_id);
+    } catch (err) {
+      console.error("Upload failed:", err);
+    }
+  };
 
   return (
-    <div
-      {...getRootProps()}
-      className="border-2 border-dashed p-10 text-center cursor-pointer"
-    >
-      <input {...getInputProps()} />
-      <p>Drag & drop CSV file here, or click to upload</p>
+    <div className="p-6 border rounded-xl text-center">
+      <input type="file" onChange={handleFileChange} />
+
+      {fileId && (
+        <p className="mt-4 text-green-500">
+          Uploaded! File ID: {fileId}
+        </p>
+      )}
     </div>
   );
 }
+
+export default FileUploader;
