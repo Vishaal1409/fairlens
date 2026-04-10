@@ -1,13 +1,15 @@
 """
 FairLens API routes
 -------------------
-/upload  – accept a CSV, store the DataFrame in memory, return metadata
-/analyze – run Vishaal's fairness metrics on a previously uploaded file
+/upload        – accept a CSV, store the DataFrame in memory, return metadata
+/upload-model  – accept a .pkl or .joblib model file, store in memory, return model_id
+/analyze       – run Vishaal's fairness metrics on a previously uploaded file
 """
 
 import uuid
 import io
 
+import joblib
 import pandas as pd
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel
@@ -22,6 +24,12 @@ router = APIRouter()
 # Populated by /upload, consumed by /analyze
 # ---------------------------------------------------------------------------
 uploaded_files: dict[str, pd.DataFrame] = {}
+
+# ---------------------------------------------------------------------------
+# Shared in-memory model store  (model_id -> trained model object)
+# Populated by /upload-model
+# ---------------------------------------------------------------------------
+uploaded_models: dict[str, object] = {}
 
 
 # ---------------------------------------------------------------------------
@@ -61,6 +69,41 @@ async def upload_csv(file: UploadFile = File(...)):
 
 
 # ---------------------------------------------------------------------------
+# POST /upload-model
+# ---------------------------------------------------------------------------
+@router.post("/upload-model", tags=["models"])
+async def upload_model(file: UploadFile = File(...)):
+    """
+    Accept a serialized model (.pkl or .joblib) and store it in memory.
+
+    Response shape:
+    {
+        "model_id": "a1b2c3d4",
+        "type":     "<class 'sklearn.linear_model._logistic.LogisticRegression'>"
+    }
+    """
+    if not (file.filename.endswith(".pkl") or file.filename.endswith(".joblib")):
+        raise HTTPException(
+            status_code=400,
+            detail="Only .pkl or .joblib model files are accepted.",
+        )
+
+    contents = await file.read()
+    try:
+        model = joblib.load(io.BytesIO(contents))
+    except Exception as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Could not deserialise model: {exc}",
+        )
+
+    model_id = uuid.uuid4().hex[:8]
+    uploaded_models[model_id] = model
+
+    return {"model_id": model_id, "type": str(type(model))}
+
+
+# ---------------------------------------------------------------------------
 # POST /analyze
 # ---------------------------------------------------------------------------
 class AnalyzeRequest(BaseModel):
@@ -95,18 +138,11 @@ def analyze_file(request: AnalyzeRequest):
     df = uploaded_files[request.file_id]
 
     # Validate column names before handing off to the ML layer
-    for col_name, col_val in {
-        "protected_col": request.protected_col,
-        "label_col":     request.label_col,
-        "predicted_col": request.predicted_col,
-    }.items():
-        if col_val not in df.columns:
+    for col in [request.protected_col, request.label_col, request.predicted_col]:
+        if col not in df.columns:
             raise HTTPException(
-                status_code=422,
-                detail=(
-                    f"Column '{col_val}' (passed as {col_name}) not found. "
-                    f"Available columns: {df.columns.tolist()}"
-                ),
+                status_code=400,
+                detail=f"Column '{col}' not found. Available columns: {list(df.columns)}",
             )
 
     # Delegate to Vishaal's analyzer

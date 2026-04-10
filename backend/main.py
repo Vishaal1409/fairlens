@@ -24,3 +24,8 @@ app.include_router(router)
 @app.get("/", tags=["health"])
 def root():
     return {"message": "FairLens API is running 🚀"}
+
+
+@app.get("/health", tags=["health"])
+def health_check():
+    return {"status": "ok", "version": "1.0.0", "project": "FairLens"}
