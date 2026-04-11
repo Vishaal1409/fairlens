@@ -1,25 +1,23 @@
-import { useState } from "react";
-import Layout from "./pages/Layout";
-import UploadPage from "./pages/UploadPage";
-import ResultsPage from "./pages/ResultsPage";
-import ExplainabilityPage from "./pages/ExplainabilityPage";
-import MitigationPage from "./pages/MitigationPage";
-
-const pages = {
-  upload:         <UploadPage />,
-  results:        <ResultsPage />,
-  explainability: <ExplainabilityPage />,
-  mitigation:     <MitigationPage />,
-};
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import Layout from './components/Layout'
+import UploadPage from './pages/UploadPage'
+import ResultsPage from './pages/ResultsPage'
+import ExplainabilityPage from './pages/ExplainabilityPage'
+import MitigationPage from './pages/MitigationPage'
 
 function App() {
-  const [activePage, setActivePage] = useState("upload");
-
   return (
-    <Layout activePage={activePage} onNavigate={setActivePage}>
-      {pages[activePage]}
-    </Layout>
-  );
+    <BrowserRouter>
+      <Layout>
+        <Routes>
+          <Route path="/" element={<UploadPage />} />
+          <Route path="/results" element={<ResultsPage />} />
+          <Route path="/explain" element={<ExplainabilityPage />} />
+          <Route path="/mitigate" element={<MitigationPage />} />
+        </Routes>
+      </Layout>
+    </BrowserRouter>
+  )
 }
 
-export default App;
+export default App

@@ -5,9 +5,7 @@
   src: url('https://fonts.cdnfonts.com/css/berkeley-mono');
 }
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 body {
   font-family: 'Inter', sans-serif;
