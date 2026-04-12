@@ -1,17 +1,14 @@
-import FileUploader from "./components/FileUploader";
-import MetricCard from "./components/MetricCard";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import ResultsPage from "./pages/ResultsPage";
 
 function App() {
   return (
-    <div className="p-10 space-y-6">
-      <FileUploader />
-
-      <div className="grid grid-cols-3 gap-4">
-        <MetricCard name="Fairness Score" score="85%" status="good" />
-        <MetricCard name="Bias Risk" score="40%" status="warning" />
-        <MetricCard name="Alert Level" score="70%" status="danger" />
-      </div>
-    </div>
+    <Router>
+      <Routes>
+        <Route path="/" element={<Navigate to="/results" replace />} />
+        <Route path="/results" element={<ResultsPage />} />
+      </Routes>
+    </Router>
   );
 }
 
