@@ -1,18 +1,30 @@
-export default function MetricCard({ name, score, status }) {
-  const color =
-    status === "good"
-      ? "bg-green-500"
-      : status === "warning"
-      ? "bg-yellow-500"
-      : "bg-red-500";
+export default function MetricCard({ name, score }) {
+  let color = ""
+  let label = ""
+
+  if (score >= 0.7) {
+    color = "bg-green-100 text-green-700"
+    label = "Fair"
+  } else if (score >= 0.5) {
+    color = "bg-yellow-100 text-yellow-700"
+    label = "Moderate"
+  } else {
+    color = "bg-red-100 text-red-700"
+    label = "High Bias"
+  }
 
   return (
-    <div className="p-4 border rounded-lg shadow">
-      <div className="flex items-center gap-2">
-        <div className={`w-3 h-3 rounded-full ${color}`}></div>
-        <h3 className="font-semibold">{name}</h3>
+    <div className="p-4 bg-white border rounded-lg shadow-sm hover:shadow-md transition">
+      
+      <div className="flex justify-between items-center">
+        <h3 className="font-semibold capitalize">{name}</h3>
+
+        <span className={`px-2 py-1 rounded text-xs font-bold ${color}`}>
+          {label}
+        </span>
       </div>
-      <p className="text-xl mt-2">{score}</p>
+
+      <p className="text-2xl font-bold mt-3">{score}</p>
     </div>
-  );
+  )
 }
