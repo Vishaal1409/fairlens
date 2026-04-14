@@ -1,7 +1,10 @@
 import pandas as pd
+<<<<<<< HEAD
 import shap
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
+=======
+>>>>>>> origin/feat/arun
 
 def analyze(df: pd.DataFrame, protected_col: str, label_col: str, predicted_col: str) -> dict:
     """
@@ -25,6 +28,11 @@ def analyze(df: pd.DataFrame, protected_col: str, label_col: str, predicted_col:
     rates = list(positive_rates.values())
 
     # --- Demographic Parity ---
+<<<<<<< HEAD
+=======
+    # Measures: does the model predict positive outcomes equally across groups?
+    # Score of 1.0 = perfectly fair, lower = more biased
+>>>>>>> origin/feat/arun
     if max(rates) == 0:
         demographic_parity_score = 1.0
     else:
@@ -32,10 +40,19 @@ def analyze(df: pd.DataFrame, protected_col: str, label_col: str, predicted_col:
     results["demographic_parity"] = demographic_parity_score
 
     # --- Disparate Impact ---
+<<<<<<< HEAD
+=======
+    # Score of 0.8 or above = fair (the "80% rule")
+    # Below 0.8 = biased
+>>>>>>> origin/feat/arun
     di_score = round(min(rates) / max(rates), 4) if max(rates) != 0 else 1.0
     results["disparate_impact"] = di_score
 
     # --- Equal Opportunity ---
+<<<<<<< HEAD
+=======
+    # Measures: among people who SHOULD get positive outcome, are all groups equally likely to get it?
+>>>>>>> origin/feat/arun
     tpr_by_group = {}
     for group in groups:
         group_df = df[df[protected_col] == group]
@@ -51,6 +68,10 @@ def analyze(df: pd.DataFrame, protected_col: str, label_col: str, predicted_col:
     results["equal_opportunity"] = eo_score
 
     # --- Calibration ---
+<<<<<<< HEAD
+=======
+    # Measures: when model predicts positive, is it equally accurate across groups?
+>>>>>>> origin/feat/arun
     calibration_by_group = {}
     for group in groups:
         group_df = df[df[protected_col] == group]
@@ -66,6 +87,10 @@ def analyze(df: pd.DataFrame, protected_col: str, label_col: str, predicted_col:
     results["calibration"] = cal_score
 
     # --- Predictive Parity ---
+<<<<<<< HEAD
+=======
+    # Measures: is the positive predictive value equal across groups?
+>>>>>>> origin/feat/arun
     ppv_by_group = {}
     for group in groups:
         group_df = df[df[protected_col] == group]
