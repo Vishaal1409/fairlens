@@ -1,9 +1,9 @@
 import { useState } from "react"
-import { uploadFile, analyzeFile } from "../api/client"
+import { uploadFile, analyzeFile, explainFile } from "../api/client"
 import { useNavigate } from "react-router-dom"
 
-export default function FileUploader({ onResults }) {
-  const [status, setStatus] = useState("idle") // idle | uploading | analyzing | done | error
+export default function FileUploader() {
+  const [status, setStatus] = useState("idle")
   const [fileName, setFileName] = useState(null)
   const [errorMsg, setErrorMsg] = useState(null)
   const navigate = useNavigate()
@@ -20,24 +20,34 @@ export default function FileUploader({ onResults }) {
       // Step 1 — upload
       const uploadRes = await uploadFile(file)
       const fileId = uploadRes.file_id
-      console.log("Uploaded:", fileId)
 
       setStatus("analyzing")
 
       // Step 2 — analyze
-      // 🔧 Change these column names to match your CSV
       const analyzeRes = await analyzeFile(
         fileId,
-        "gender",   // protected column
-        "income",   // label column
-        "predicted" // predicted column
+        "gender",
+        "income",
+        "predicted"
       )
-      console.log("Analysis:", analyzeRes)
+
+      // Step 3 — explain (SHAP)
+      let shapValues = null
+      try {
+        const explainRes = await explainFile(fileId)
+        shapValues = explainRes.shap_values ?? explainRes
+      } catch {
+        console.warn("SHAP explain not available, using dummy")
+      }
 
       setStatus("done")
 
-      // Step 3 — navigate to results with real data
-      navigate("/results", { state: { metrics: analyzeRes } })
+      navigate("/results", {
+        state: {
+          metrics: analyzeRes,
+          shapValues: shapValues
+        }
+      })
 
     } catch (err) {
       console.error("Failed:", err)
@@ -63,7 +73,6 @@ export default function FileUploader({ onResults }) {
         textAlign: "center",
         background: "#F1EFE8",
         cursor: "pointer",
-        transition: "border-color 0.2s",
       }}
       onClick={() => document.getElementById("fileInput").click()}
     >
@@ -75,7 +84,6 @@ export default function FileUploader({ onResults }) {
         onChange={handleFileChange}
       />
 
-      {/* Icon */}
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none"
         stroke="#888780" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
         style={{ margin: "0 auto 12px" }}>
@@ -89,30 +97,24 @@ export default function FileUploader({ onResults }) {
           <div style={{ fontSize: "15px", fontWeight: 500, color: "#2C2C2A", marginBottom: "4px" }}>
             Drop your CSV here
           </div>
-          <div style={{ fontSize: "13px", color: "#888780" }}>
-            or click to browse
-          </div>
+          <div style={{ fontSize: "13px", color: "#888780" }}>or click to browse</div>
         </>
       )}
-
       {status === "uploading" && (
         <div style={{ fontSize: "14px", color: "#854F0B", fontWeight: 500 }}>
           Uploading {fileName}...
         </div>
       )}
-
       {status === "analyzing" && (
         <div style={{ fontSize: "14px", color: "#185FA5", fontWeight: 500 }}>
-          Analyzing for bias...
+          Analyzing for bias + SHAP...
         </div>
       )}
-
       {status === "done" && (
         <div style={{ fontSize: "14px", color: "#1D9E75", fontWeight: 500 }}>
-          Done! Redirecting to results...
+          Done! Redirecting...
         </div>
       )}
-
       {status === "error" && (
         <>
           <div style={{ fontSize: "14px", color: "#E24B4A", fontWeight: 500, marginBottom: "4px" }}>
