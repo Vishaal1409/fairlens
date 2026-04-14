@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router-dom'
 import BiasHeatmap from '../components/BiasHeatmap'
 import SummaryBanner from '../components/SummaryBanner'
+import SHAPChart from '../components/SHAPChart'
 
 const dummyMetrics = {
     accuracy: 0.82,
@@ -9,9 +10,23 @@ const dummyMetrics = {
     disparate_impact: 0.71
 }
 
+const dummyShap = {
+    age: 0.42,
+    income: 0.31,
+    gender: -0.18,
+    education: 0.27,
+    race: -0.35,
+    hours_per_week: 0.19,
+    occupation: 0.22,
+    marital_status: -0.11,
+    relationship: 0.08,
+    country: -0.05
+}
+
 const ResultsPage = () => {
     const location = useLocation()
     const metrics = location.state?.metrics ?? dummyMetrics
+    const shapValues = location.state?.shapValues ?? dummyShap
 
     return (
         <div className="min-h-screen bg-gray-50 p-8">
@@ -53,6 +68,8 @@ const ResultsPage = () => {
                     )
                 })}
             </div>
+
+            <SHAPChart shapValues={shapValues} />
 
             <p style={{ fontSize: "11px", fontWeight: 500, color: "#888780", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "12px" }}>
                 Bias heatmap
