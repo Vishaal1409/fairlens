@@ -1,12 +1,13 @@
 import pandas as pd
 from analyzer import analyze
 
-# Balanced fake dataset — both groups have positive predictions
 data = {
     "gender":     ["male", "female", "male", "female", "male", "female"],
-    "income":     [50000,   30000,   70000,   40000,   60000,   35000],
-    "label":      [1,       1,       1,       1,       0,       0],
-    "prediction": [1,       1,       1,       0,       0,       1]   # ✅ females get some 1s too
+    "age":        [25,     32,       45,     28,       36,     50],
+    "income":     [50000,  30000,    70000,  40000,    60000,  35000],
+    "experience": [2,      5,        10,     3,        8,      12],
+    "label":      [1,      1,        1,      1,        0,      0],
+    "prediction": [1,      1,        1,      0,        0,      1]
 }
 
 df = pd.DataFrame(data)

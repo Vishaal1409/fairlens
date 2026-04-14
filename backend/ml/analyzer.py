@@ -1,4 +1,7 @@
 import pandas as pd
+import shap
+import numpy as np
+from sklearn.ensemble import RandomForestClassifier
 
 def analyze(df: pd.DataFrame, protected_col: str, label_col: str, predicted_col: str) -> dict:
     """
@@ -22,8 +25,6 @@ def analyze(df: pd.DataFrame, protected_col: str, label_col: str, predicted_col:
     rates = list(positive_rates.values())
 
     # --- Demographic Parity ---
-    # Measures: does the model predict positive outcomes equally across groups?
-    # Score of 1.0 = perfectly fair, lower = more biased
     if max(rates) == 0:
         demographic_parity_score = 1.0
     else:
@@ -31,13 +32,10 @@ def analyze(df: pd.DataFrame, protected_col: str, label_col: str, predicted_col:
     results["demographic_parity"] = demographic_parity_score
 
     # --- Disparate Impact ---
-    # Score of 0.8 or above = fair (the "80% rule")
-    # Below 0.8 = biased
     di_score = round(min(rates) / max(rates), 4) if max(rates) != 0 else 1.0
     results["disparate_impact"] = di_score
 
     # --- Equal Opportunity ---
-    # Measures: among people who SHOULD get positive outcome, are all groups equally likely to get it?
     tpr_by_group = {}
     for group in groups:
         group_df = df[df[protected_col] == group]
@@ -53,7 +51,6 @@ def analyze(df: pd.DataFrame, protected_col: str, label_col: str, predicted_col:
     results["equal_opportunity"] = eo_score
 
     # --- Calibration ---
-    # Measures: when model predicts positive, is it equally accurate across groups?
     calibration_by_group = {}
     for group in groups:
         group_df = df[df[protected_col] == group]
@@ -69,7 +66,6 @@ def analyze(df: pd.DataFrame, protected_col: str, label_col: str, predicted_col:
     results["calibration"] = cal_score
 
     # --- Predictive Parity ---
-    # Measures: is the positive predictive value equal across groups?
     ppv_by_group = {}
     for group in groups:
         group_df = df[df[protected_col] == group]
@@ -83,5 +79,48 @@ def analyze(df: pd.DataFrame, protected_col: str, label_col: str, predicted_col:
     ppv_values = list(ppv_by_group.values())
     pp_score = round(min(ppv_values) / max(ppv_values), 4) if max(ppv_values) != 0 else 1.0
     results["predictive_parity"] = pp_score
+
+    # --- SHAP Feature Importance ---
+    try:
+        feature_cols = [
+            col for col in df.columns
+            if col not in [label_col, predicted_col, protected_col]
+            and df[col].dtype in [np.float64, np.int64, float, int]
+        ]
+
+        if len(feature_cols) > 0:
+            X = df[feature_cols].fillna(0)
+            y = df[label_col]
+
+            model = RandomForestClassifier(n_estimators=50, random_state=42, max_depth=4)
+            model.fit(X, y)
+
+            explainer = shap.TreeExplainer(model)
+            shap_values = explainer.shap_values(X)
+
+            # Handle all SHAP return types cleanly
+            if isinstance(shap_values, list):
+                shap_array = np.array(shap_values[1])
+            elif hasattr(shap_values, 'values'):
+                shap_array = np.array(shap_values.values)
+            else:
+                shap_array = np.array(shap_values)
+
+            # If 3D array, take class 1 slice
+            if shap_array.ndim == 3:
+                shap_array = shap_array[:, :, 1]
+
+            mean_shap = np.abs(shap_array).mean(axis=0)
+            shap_dict = dict(zip(feature_cols, mean_shap.tolist()))
+
+            top_shap = dict(
+                sorted(shap_dict.items(), key=lambda x: x[1], reverse=True)[:10]
+            )
+            results["shap_values"] = {k: round(float(v), 4) for k, v in top_shap.items()}
+        else:
+            results["shap_values"] = {}
+
+    except Exception as e:
+        results["shap_values"] = {"error": str(e)}
 
     return results
