@@ -2,6 +2,24 @@
 
 ---
 
+## 2026-04-14 (Arun)
+
+### feat: add /mitigate endpoint with reweighing
+**Commit:** `4b31811` → `feat/arun`
+
+#### Added
+- `POST /mitigate` — applies AIF360 Reweighing on an uploaded dataset to mitigate bias
+  - Computes and returns fairness metrics before and after mitigation using `analyze()`
+  - Automatically identifies privileged and unprivileged groups based on positive condition rates
+  - Returns structured `MitigateResponse` with `before` and `after` metrics dictionaries
+  - Handles missing files (404) and missing columns (422) securely
+
+#### Changed
+- `backend/requirements.txt` — added `aif360`
+- Extracted and relocated test scripts to `backend/tests/` directory (`test_mitigate.py`, `test_analyzer.py`)
+
+---
+
 ## 2026-04-13 (Arun)
 
 ### feat: /explain endpoint + model file upload + infer-fairness

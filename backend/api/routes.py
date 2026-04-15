@@ -21,6 +21,8 @@ import pandas as pd
 import shap
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel
+from aif360.datasets import BinaryLabelDataset
+from aif360.algorithms.preprocessing import Reweighing
 
 from ml.analyzer import analyze
 
@@ -487,3 +489,107 @@ def infer_and_check_fairness(request: InferFairnessRequest):
         protected_col=request.protected_col,
         status="complete",
     )
+
+
+# ---------------------------------------------------------------------------
+# POST /mitigate
+# ---------------------------------------------------------------------------
+class MitigateRequest(BaseModel):
+    file_id:       str
+    protected_col: str
+    label_col:     str
+    predicted_col: str
+
+
+class MitigateResponse(BaseModel):
+    before: dict[str, float]
+    after:  dict[str, float]
+    status: Literal["complete", "error"]
+
+
+@router.post(
+    "/mitigate",
+    tags=["fairness"],
+    response_model=MitigateResponse,
+)
+def mitigate_file(request: MitigateRequest):
+    """
+    Apply AIF360 Reweighing on an uploaded dataset to mitigate bias.
+    Computes fairness metrics before and after mitigation.
+    """
+    if request.file_id not in uploaded_files:
+        raise HTTPException(
+            status_code=404,
+            detail="File not found. Upload a CSV first via POST /upload.",
+        )
+
+    df = uploaded_files[request.file_id]
+
+    for col_name, col_val in {
+        "protected_col": request.protected_col,
+        "label_col":     request.label_col,
+        "predicted_col": request.predicted_col,
+    }.items():
+        if col_val not in df.columns:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"Column '{col_val}' (passed as {col_name}) not found. "
+                    f"Available columns: {df.columns.tolist()}"
+                ),
+            )
+
+    try:
+        # Compute BEFORE metrics
+        before_metrics = analyze(df, request.protected_col, request.label_col, request.predicted_col)
+
+        # Identify privileged / unprivileged groups automatically
+        groups = df[request.protected_col].unique()
+        pos_rates = {}
+        for group in groups:
+            group_df = df[df[request.protected_col] == group]
+            if len(group_df) > 0:
+                pos_rates[group] = (group_df[request.label_col] == 1).mean()
+            else:
+                pos_rates[group] = 0.0
+
+        privileged_group_val = max(pos_rates, key=pos_rates.get) if pos_rates else None
+        
+        if len(groups) > 1 and privileged_group_val is not None:
+            unprivileged_groups = [{request.protected_col: g} for g in groups if g != privileged_group_val]
+            privileged_groups = [{request.protected_col: privileged_group_val}]
+
+            df_copy = df.copy()
+            # Convert string categories to categorical codes for AIF360 if needed, but it's simpler to let it handle it 
+            # if it fails we can convert, but typically user sends integers or strings.
+        
+            dataset = BinaryLabelDataset(
+                df=df_copy,
+                label_names=[request.label_col],
+                protected_attribute_names=[request.protected_col],
+                favorable_label=1,
+                unfavorable_label=0
+            )
+
+            rw = Reweighing(unprivileged_groups=unprivileged_groups, privileged_groups=privileged_groups)
+            dataset_transf = rw.fit_transform(dataset)
+
+            # Resample dataset using Reweighing weights to "apply" the weights to raw dataframe that analyze can use
+            weights = dataset_transf.instance_weights
+            df_reweighed = df_copy.sample(n=len(df_copy), weights=weights, replace=True, random_state=42)
+        else:
+            df_reweighed = df.copy()
+
+        # Compute AFTER metrics
+        after_metrics = analyze(df_reweighed, request.protected_col, request.label_col, request.predicted_col)
+
+    except Exception as exc:
+        logger.exception("analyze() or Reweighing failed in /mitigate")
+        raise HTTPException(status_code=500, detail=f"Unexpected error computing metrics: {exc}")
+
+    return MitigateResponse(
+        before=before_metrics,
+        after=after_metrics,
+        status="complete"
+    )
+
