@@ -1,5 +1,5 @@
 import pandas as pd
-from analyzer import analyze
+from ml.analyzer import analyze
 
 # Balanced fake dataset — both groups have positive predictions
 data = {
