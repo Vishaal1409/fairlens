@@ -1,5 +1,43 @@
 import pandas as pd
-from backend.ml.analyzer import analyze 
+from backend.ml.analyzer import analyze
+
+
+def print_full_analysis(result):
+    # ── Enriched Metrics ─────────────────────────
+    print("\n========== ALL METRICS (WITH EXPLANATIONS) ==========")
+    if "metrics_enriched" in result:
+        for key, data in result["metrics_enriched"].items():
+            print(f"\n  [{data['label']}]")
+            print(f"  Score   : {data['value']}")
+            print(f"  Ideal   : {data['ideal']}")
+            print(f"  Meaning : {data['explanation']}")
+
+    # ── Mitigation: Reweighing ───────────────────
+    if "mitigation" in result and "reweighing" in result["mitigation"]:
+        print("\n========== REWEIGHING — Before vs After ==========")
+        before = result["mitigation"]["reweighing"]["before"]
+        after  = result["mitigation"]["reweighing"]["after"]
+
+        for k in before:
+            print(f"  {k:40s}  before={before[k]:>7}  after={after[k]:>7}")
+
+    # ── Mitigation: DIR ──────────────────────────
+    if "mitigation" in result and "disparate_impact_remover" in result["mitigation"]:
+        print("\n========== DISPARATE IMPACT REMOVER — Before vs After ==========")
+        before = result["mitigation"]["disparate_impact_remover"]["before"]
+        after  = result["mitigation"]["disparate_impact_remover"]["after"]
+
+        for k in before:
+            print(f"  {k:40s}  before={before[k]:>7}  after={after[k]:>7}")
+
+    # ── Custom Metrics ───────────────────────────
+    if "metrics" in result:
+        print("\n========== CUSTOM METRICS ==========")
+        for k, v in result["metrics"].items():
+            print(f"  {k}: {v}")
+
+    print("\nStatus:", result["status"])
+    print("\n========================================\n")
 
 
 def run_test(df, protected_col, label_col, predicted_col, title):
@@ -12,33 +50,7 @@ def run_test(df, protected_col, label_col, predicted_col, title):
         predicted_col=predicted_col
     )
 
-    # ── Mitigation results (if present) ──
-    if "mitigation" in result["metrics"] and "error" not in result["metrics"]["mitigation"]:
-        mitigation = result["metrics"]["mitigation"]
-
-        print("=== BEFORE mitigation (AIF360) ===")
-        for k, v in mitigation["aif360_before"].items():
-            print(f"  {k}: {v}")
-
-        print("\n=== AFTER reweighing (AIF360) ===")
-        for k, v in mitigation["aif360_after"].items():
-            print(f"  {k}: {v}")
-
-    else:
-        print("Mitigation failed:", result["metrics"].get("mitigation"))
-
-    # ── Custom Metrics ──
-    print("\n=== Custom Metrics ===")
-    for k, v in result["metrics"].items():
-        if k not in ["mitigation", "shap_values"]:
-            print(f"  {k}: {v}")
-
-    # ── SHAP ──
-    print("\n=== SHAP Top Features ===")
-    print(result["metrics"].get("shap_values", {}))
-
-    print("\nStatus:", result["status"])
-    print("\n========================================\n")
+    print_full_analysis(result)
 
 
 # ─────────────────────────────────────────
@@ -81,3 +93,18 @@ run_test(
     predicted_col="prediction",
     title="CATEGORICAL PROTECTED COLUMN (male/female)"
 )
+
+
+# ─────────────────────────────────────────
+# OPTIONAL: Single Dataset Deep Dive
+# ─────────────────────────────────────────
+print("\n\n🔍 SINGLE DATASET DEEP DIVE\n")
+
+result = analyze(
+    df1,
+    protected_col="gender",
+    label_col="income",
+    predicted_col="predicted"
+)
+
+print_full_analysis(result)
