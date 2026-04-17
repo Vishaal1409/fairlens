@@ -1,17 +1,17 @@
-import React, { useState } from 'react'
-import { useLocation } from 'react-router-dom'
-import BiasHeatmap from '../components/BiasHeatmap'
-import SummaryBanner from '../components/SummaryBanner'
-import SHAPChart from '../components/SHAPChart'
-import BeforeAfterChart from '../components/BeforeAfterChart'
-import { api } from '../api/client' // Ensure this path matches your file structure
+import React, { useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import BiasHeatmap from '../components/BiasHeatmap';
+import SummaryBanner from '../components/SummaryBanner';
+import SHAPChart from '../components/SHAPChart';
+import BeforeAfterChart from '../components/BeforeAfterChart';
+import { api } from '../api/client';
 
 const dummyMetrics = {
     accuracy: 0.82,
     demographic_parity: 0.65,
     equal_opportunity: 0.48,
     disperate_impact: 0.71
-}
+};
 
 const dummyShap = {
     age: 0.42,
@@ -24,30 +24,32 @@ const dummyShap = {
     marital_status: -0.11,
     relationship: 0.08,
     country: -0.05
-}
+};
+
+const metricExplanations = {
+    accuracy: "How often the model makes the correct prediction overall.",
+    demographic_parity: "Ensures the model approves different groups at equal rates regardless of protected attributes.",
+    equal_opportunity: "Ensures that qualified candidates from all groups have the same chance of a positive outcome.",
+    disperate_impact: "A ratio checking if a specific group is being significantly disadvantaged compared to others."
+};
 
 const ResultsPage = () => {
-    const location = useLocation()
-    const metrics = location.state?.metrics ?? dummyMetrics
-    const shapValues = location.state?.shapValues ?? dummyShap
+    const location = useLocation();
+    const metrics = location.state?.metrics ?? dummyMetrics;
+    const shapValues = location.state?.shapValues ?? dummyShap;
 
-    // State for mitigation results
-    const [mitigatedData, setMitigatedData] = useState(null)
-    const [loading, setLoading] = useState(false)
+    const [mitigatedData, setMitigatedData] = useState(null);
+    const [loading, setLoading] = useState(false);
 
-    // Function to call the /mitigate API
     const handleMitigation = async () => {
-        setLoading(true)
+        setLoading(true);
         try {
-            // We use the file_id from location state or a placeholder
-            const fileId = location.state?.fileId || 'demo_file_123'
-            const response = await api.post('/mitigate', { file_id: fileId })
-
-            // Expected format: [{ metric: 'Demographic Parity', before: 0.65, after: 0.82 }, ...]
-            setMitigatedData(response.data)
+            const fileId = location.state?.fileId || 'demo_file_123';
+            const response = await api.post('/mitigate', { file_id: fileId });
+            setMitigatedData(response.data);
         } catch (error) {
-            console.error("API Error, falling back to dummy mitigation data:", error)
-            // Hackathon Fallback: If Arun's API isn't ready, show a successful "fix" anyway
+            console.error("API Error, falling back to dummy mitigation data:", error);
+            // Hackathon Fallback
             setMitigatedData([
                 {
                     metric: 'Demographic Parity',
@@ -59,11 +61,11 @@ const ResultsPage = () => {
                     before: metrics.equal_opportunity,
                     after: Math.min(metrics.equal_opportunity + 0.25, 0.92)
                 }
-            ])
+            ]);
         } finally {
-            setLoading(false)
+            setLoading(false);
         }
-    }
+    };
 
     return (
         <div className="min-h-screen bg-gray-50 p-8">
@@ -82,27 +84,47 @@ const ResultsPage = () => {
             {/* Metric Cards Grid */}
             <div style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-                gap: "10px",
+                gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                gap: "15px",
                 marginBottom: "1.5rem"
             }}>
                 {Object.entries(metrics).map(([key, value]) => {
-                    const status = value >= 0.7 ? "good" : value >= 0.5 ? "warning" : "danger"
+                    const status = value >= 0.7 ? "good" : value >= 0.5 ? "warning" : "danger";
+                    const borderColor = status === "good" ? "#1D9E75" : status === "warning" ? "#EF9F27" : "#E24B4A";
+                    const bgColor = status === "good" ? "#EAFAF3" : status === "warning" ? "#FAEEDA" : "#FCEBEB";
+
                     return (
                         <div key={key} style={{
-                            background: status === "good" ? "#EAFAF3" : status === "warning" ? "#FAEEDA" : "#FCEBEB",
-                            border: `0.5px solid ${status === "good" ? "#1D9E75" : status === "warning" ? "#EF9F27" : "#E24B4A"}`,
+                            background: bgColor,
+                            border: `0.5px solid ${borderColor}`,
                             borderRadius: "12px",
-                            padding: "1rem 1.25rem"
+                            padding: "1rem 1.25rem",
+                            display: "flex",
+                            flexDirection: "column",
+                            justifyContent: "space-between"
                         }}>
-                            <div style={{ fontSize: "11px", color: "#888780", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                                {key.replace(/_/g, " ")}
+                            <div>
+                                <div style={{ fontSize: "11px", color: "#888780", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                                    {key.replace(/_/g, " ")}
+                                </div>
+                                <div style={{ fontSize: "26px", fontWeight: 500, color: "#2C2C2A" }}>
+                                    {Math.round(value * 100)}%
+                                </div>
                             </div>
-                            <div style={{ fontSize: "26px", fontWeight: 500, color: "#2C2C2A" }}>
-                                {Math.round(value * 100)}%
+
+                            {/* Plain Language Explanation */}
+                            <div style={{
+                                marginTop: "12px",
+                                paddingTop: "8px",
+                                borderTop: `1px solid ${borderColor}44`,
+                                fontSize: "11px",
+                                color: "#444",
+                                lineHeight: "1.4"
+                            }}>
+                                <strong>What this means:</strong> {metricExplanations[key] || "Explanation coming soon."}
                             </div>
                         </div>
-                    )
+                    );
                 })}
             </div>
 
@@ -119,15 +141,19 @@ const ResultsPage = () => {
             {/* Mitigation Action Section */}
             <div style={{
                 marginTop: "3rem",
-                padding: "2rem",
+                padding: "2.5rem",
                 background: "#fff",
                 borderRadius: "16px",
                 border: "1px dashed #ccc",
-                textAlign: "center"
+                textAlign: "center",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.03)"
             }}>
                 {!mitigatedData ? (
                     <>
-                        <h4 style={{ marginBottom: "10px" }}>Detected bias in your model?</h4>
+                        <h4 style={{ marginBottom: "12px", color: "#2C2C2A" }}>Detected bias in your model?</h4>
+                        <p style={{ fontSize: "14px", color: "#666", marginBottom: "20px" }}>
+                            Our FairLens engine can suggest adjustments to rebalance your outcomes.
+                        </p>
                         <button
                             onClick={handleMitigation}
                             disabled={loading}
@@ -151,7 +177,7 @@ const ResultsPage = () => {
                 )}
             </div>
         </div>
-    )
-}
+    );
+};
 
-export default ResultsPage
+export default ResultsPage;
