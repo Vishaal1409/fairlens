@@ -13,9 +13,7 @@
 ### Arun — Backend / DevOps
 - [ ] 🔴 Add `/api/v1/` prefix to all routes (current: `/upload`, `/analyze`)
 - [ ] 🔴 Add `analysis_id` UUID session tracking across all endpoints
-- [ ] 🔴 Add `GET /api/v1/health` endpoint with correct response shape
 - [ ] 🔴 Add missing fields to upload response: `filename`, `detected_protected`
-- [ ] 🔴 Update `requirements.txt` — add: `aif360`, `shap`, `lime`, `scikit-learn`, `scipy`
 
 ### Vishaal — ML / Metrics
 - [ ] 🔴 Fix analyze request shape: rename `protected_col` → `protected_attribute`, `label_col` → `label_column`; add `positive_label` field
@@ -41,14 +39,7 @@
 - [ ] 🟡 Set up GitHub Actions CI (lint + test + Docker build)
 
 ### Arun — Backend / DevOps
-- [ ] 🔴 Implement `POST /api/v1/mitigate` endpoint:
-  - [ ] Reweighing strategy (AIF360 `Reweighing` class)
-  - [ ] Disparate Impact Remover strategy (AIF360 `DisparateImpactRemover`, `repair_level=0.8`)
-- [ ] 🟡 Add `.pkl` (pickle) file support to the upload endpoint
 - [ ] 🟡 Replace in-memory `_file_store` dict with persistent file/session storage (`file_handler.py`)
-- [ ] 🟡 Restructure backend into folders: `routers/`, `ml/`, `models/`, `utils/`
-- [ ] 🟡 Add `cache.py` — SQLite result caching
-- [ ] 🟡 Share Postman collection by **Apr 16**
 
 ### Shruthika — Frontend (Metric + Chart Components)
 - [ ] 🔴 Build `MetricCard.jsx` — fairness metric display card
@@ -63,9 +54,14 @@
 
 ---
 
-## 🟢 Week 3+
+## 🟢 Week 3+ (Phase 3 Roadmap)
 
-### Vishaal
+### Arun — Backend / DevOps
+- [ ] 🟡 Expand Robot Framework testing for remaining edge-case endpoints
+- [ ] 🟡 Formalize Deployment to public host (Render/Railway pipeline configs)
+- [ ] 🟢 Generate final presentation deck mapping backend architecture
+
+### Vishaal 
 - [ ] 🟡 Write pytest unit tests for all 8 metric functions
 - [ ] 🟡 Set up GitHub Actions CI workflow (lint + test + Docker build)
 
@@ -73,10 +69,13 @@
 - [ ] 🟡 Build `BeforeAfterChart.jsx` — grouped bar chart showing metric delta post-mitigation
 - [ ] 🟡 Build `ShapChart.jsx` — top-10 SHAP feature importance bars
 - [ ] 🟡 Build `LimePanel.jsx` — LIME explanation panel
+- [ ] 🟡 Dataset Comparison View — display side-by-side bias score analysis
+- [ ] 🟡 Code Export Feature — add one-click mitigation code export logic to UI
 
 ### Ishitha
 - [ ] 🟡 Build `AnalysisContext` + `useAnalysis` hook (React context for shared state)
 - [ ] 🟡 Build `Scorecard.jsx` + `Mitigation.jsx` pages (exportable bias scorecard)
+- [ ] 🟡 Download Report Export — convert dashboard summaries into PDF/CSV
 
 ### All Members
 - [ ] 🟢 Complete manual frontend test checklist per TechDoc §6.3
@@ -93,6 +92,13 @@
 
 ## ✅ Already Done
 
+- [x] **[Arun]** Added `GET /health` endpoint with active dependency statuses
+- [x] **[Arun]** Upgraded `requirements.txt` locking core ML libraries correctly
+- [x] **[Arun]** Implemented `POST /mitigate` mapping AIF360 Reweighing strategies natively
+- [x] **[Arun]** Added `.pkl` (pickle) file support to upload validation endpoints
+- [x] **[Arun]** Restructured internal tests routing moving logic natively into `./tests`
+- [x] **[Arun]** Set up continuous cache integrations leveraging SQLite
+- [x] **[Arun]** Validated extended Postman collections building dynamic suites
 - [x] FastAPI server scaffolded with CORS middleware
 - [x] `POST /upload` — accepts CSV, returns `file_id`, `columns`, `preview`, `row_count`
 - [x] `POST /analyze` — computes 3 fairness metrics (demographic parity, disparate impact, equal opportunity)
@@ -103,4 +109,4 @@
 
 ---
 
-*Generated: 2026-04-09 | Sources: FairLens.docx, FairLens_PRD.docx, FairLens_TechDoc.docx, main.py, API_CONTRACT.md*
+*Generated: 2026-04-18 | Sources: FairLens.docx, FairLens_PRD.docx, FairLens_TechDoc.docx, main.py, API_CONTRACT.md*
