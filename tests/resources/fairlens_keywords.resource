@@ -76,3 +76,43 @@ Generate In-Memory CSV
     ...    __import__('tempfile').mktemp(suffix='.csv')
     Run    python -c "\nimport csv, sys\npath = '${path}'\ntarget = ${bytes}\nrow = ['name','age','income'] + ['col'+str(i) for i in range(20)]\nwith open(path,'w',newline='') as f:\n    w = csv.writer(f)\n    w.writerow(row)\n    written = f.tell()\n    data = ','.join(['value']*23) + '\\n'\n    while written < target:\n        f.write(data)\n        written += len(data)\n"
     [Return]    ${path}
+
+Assert Analyze Response Shape
+    [Arguments]    ${response}    ${expected_protected_col}
+    [Documentation]  Asserts a valid /analyze response: status 200, metrics dict,
+    ...              protected_col echo, and status=complete.
+    Should Be Equal As Integers    ${response.status_code}    ${200}
+    ...    msg=Expected 200 for valid analyze, got ${response.status_code}
+    ${body}=    Set Variable    ${response.json()}
+    Dictionary Should Contain Key    ${body}    metrics
+    ...    msg=Response body missing 'metrics' key
+    Should Not Be Empty    ${body}[metrics]
+    ...    msg=metrics dict must not be empty
+    Dictionary Should Contain Key    ${body}    protected_col
+    ...    msg=Response body missing 'protected_col' key
+    Should Be Equal    ${body}[protected_col]    ${expected_protected_col}
+    ...    msg=protected_col echo mismatch
+    Dictionary Should Contain Key    ${body}    status
+    ...    msg=Response body missing 'status' key
+    Should Be Equal    ${body}[status]    complete
+    ...    msg=Expected status=complete, got ${body}[status]
+
+Assert Mitigate Response Shape
+    [Arguments]    ${response}
+    [Documentation]  Asserts a valid /mitigate response: status 200, before dict,
+    ...              after dict, and status=complete.
+    Should Be Equal As Integers    ${response.status_code}    ${200}
+    ...    msg=Expected 200 for valid mitigate, got ${response.status_code}
+    ${body}=    Set Variable    ${response.json()}
+    Dictionary Should Contain Key    ${body}    before
+    ...    msg=Response body missing 'before' metrics dict
+    Dictionary Should Contain Key    ${body}    after
+    ...    msg=Response body missing 'after' metrics dict
+    Should Not Be Empty    ${body}[before]
+    ...    msg=before metrics dict must not be empty
+    Should Not Be Empty    ${body}[after]
+    ...    msg=after metrics dict must not be empty
+    Dictionary Should Contain Key    ${body}    status
+    ...    msg=Response body missing 'status' key
+    Should Be Equal    ${body}[status]    complete
+    ...    msg=Expected status=complete, got ${body}[status]
