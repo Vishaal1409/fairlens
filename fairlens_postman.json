@@ -1,0 +1,572 @@
+{
+  "info": {
+    "name": "FairLens API",
+    "description": "Postman Collection for standard full-pipeline testing of FairLens endpoints.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "Verifies ML package dependencies and backend processing state. Note: returns 503 HTTP status if critical machine-learning libraries are unreachable."
+          },
+          "response": [
+            {
+              "name": "Successful Health Report",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/health",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "health"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"status\": \"ok\",\n    \"version\": \"1.0.0\",\n    \"timestamp\": \"2023-11-20T12:00:00Z\",\n    \"dependencies\": {\n        \"aif360\": \"0.5.0\",\n        \"fairlearn\": \"0.9.0\",\n        \"shap\": \"0.44.0\"\n    }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Upload",
+      "item": [
+        {
+          "name": "POST /upload",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "Attach a `.csv` file here detailing your original assessment records."
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/upload",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "upload"
+              ]
+            },
+            "description": "Uploads the assessment CSV to temporary cache storage and returns the generated `file_id` UUID hash.\\n**Postman Usage Hint**: To attach the payload, change your body-type to `form-data`, name the Key `file`, switch over its format specifier strictly to `File` (dropdown icon via hovering the key input field), and click `Select Files` to choose a sample CSV."
+          },
+          "response": [
+            {
+              "name": "CSV Load Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/upload",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "upload"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"file_id\": \"b5d3a54b\",\n    \"columns\": [\n        \"age\",\n        \"income\",\n        \"gender\",\n        \"loan_approved\",\n        \"predicted_approval\"\n    ],\n    \"preview\": [\n        {\n            \"age\": 56,\n            \"income\": 87000,\n            \"gender\": \"Female\",\n            \"loan_approved\": 1,\n            \"predicted_approval\": 0\n        }\n    ],\n    \"row_count\": 300\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST /upload-model",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "Attach the Sklearn or equivalent `.pkl` / `.joblib` model payload."
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/upload-model",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "upload-model"
+              ]
+            },
+            "description": "Upload a trained `.pkl` inference model if looking to execute SHAP metrics."
+          },
+          "response": [
+            {
+              "name": "Model Extraction Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/upload",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "upload"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"model_id\": \"dca029c1\",\n    \"status\": \"uploaded\",\n    \"type\": \"<class 'sklearn.linear_model._logistic.LogisticRegression'>\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Analysis",
+      "item": [
+        {
+          "name": "POST /analyze",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_id\": \"INSERT_YOUR_FILE_ID\",\n  \"protected_col\": \"gender\",\n  \"label_col\": \"loan_approved\",\n  \"predicted_col\": \"predicted_approval\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/analyze",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "analyze"
+              ]
+            },
+            "description": "Returns raw computed fairness scoring outputs (Demographic Parity, Disparate Impact, Calibration etc) representing model behaviour relative to the submitted protected variables."
+          },
+          "response": [
+            {
+              "name": "Bias Metrics Processed",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/analyze",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "analyze"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"metrics\": {\n        \"demographic_parity\": 0.2874,\n        \"disparate_impact\": 0.2874,\n        \"equal_opportunity\": 0.3541,\n        \"calibration\": 0.4431,\n        \"predictive_parity\": 0.4431,\n        \"shap_values\": {}\n    },\n    \"protected_col\": \"gender\",\n    \"status\": \"complete\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Explainability",
+      "item": [
+        {
+          "name": "POST /explain",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_id\": \"INSERT_YOUR_FILE_ID\",\n  \"model_id\": \"INSERT_YOUR_MODEL_ID\",\n  \"protected_col\": \"gender\",\n  \"label_col\": \"loan_approved\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/explain",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "explain"
+              ]
+            },
+            "description": "Evaluates SHAP Feature Dependency influence via evaluating exact input structures and outputs corresponding ranking JSON logic attributing decision making weights contextually."
+          },
+          "response": [
+            {
+              "name": "SHAP Computed Influence",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/explain",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "explain"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"shap_values\": {\n        \"gender_encoded\": 0.31294,\n        \"age\": 0.08291,\n        \"income\": 0.04358\n    },\n    \"status\": \"complete\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Mitigation",
+      "item": [
+        {
+          "name": "POST /mitigate",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_id\": \"INSERT_YOUR_FILE_ID\",\n  \"protected_col\": \"gender\",\n  \"label_col\": \"loan_approved\",\n  \"predicted_col\": \"predicted_approval\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/mitigate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "mitigate"
+              ]
+            },
+            "description": "Applies AIF360 Reweighing manipulation against standard fairness constraints. Submits both `before` and functionally adjusted `after` statistical representations."
+          },
+          "response": [
+            {
+              "name": "Reweighing Metrics Applied",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/mitigate",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "mitigate"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n    \"before\": {\n        \"demographic_parity\": 0.2874,\n        \"disparate_impact\": 0.2874,\n        \"equal_opportunity\": 0.3541\n    },\n    \"after\": {\n        \"demographic_parity\": 0.7221,\n        \"disparate_impact\": 0.7221,\n        \"equal_opportunity\": 0.8144\n    },\n    \"status\": \"complete\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Validation & Rejection Tests",
+      "description": "Tests asserting explicit structured JSON error payloads.\n\n### Collection Runner Config\n- **Iterations**: 5\n- **Delay**: 200ms\n- **Note**: This mimics bulk simulation loads.",
+      "item": [
+        {
+          "name": "Upload Oversized File",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 400\", () => { pm.response.to.have.status(400); });",
+                  "pm.test(\"error flag is true\", () => { pm.expect(pm.response.json().error).to.be.true; });",
+                  "pm.test(\"code is FILE_TOO_LARGE\", () => { pm.expect(pm.response.json().code).to.eql(\"FILE_TOO_LARGE\"); });",
+                  "pm.test(\"message is a non-empty string\", () => { pm.expect(pm.response.json().message).to.be.a(\"string\").and.not.empty; });",
+                  "pm.test(\"detail.max_size_mb is 50\", () => { pm.expect(pm.response.json().detail.max_size_mb).to.eql(50); });",
+                  "pm.test(\"detail.received_size_mb > 50\", () => { pm.expect(pm.response.json().detail.received_size_mb).to.be.above(50); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "large_51mb.csv"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/upload",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "upload"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Upload wrong file type (.txt)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 400\", () => { pm.response.to.have.status(400); });",
+                  "pm.test(\"error flag is true\", () => { pm.expect(pm.response.json().error).to.be.true; });",
+                  "pm.test(\"code is INVALID_FILE_TYPE\", () => { pm.expect(pm.response.json().code).to.eql(\"INVALID_FILE_TYPE\"); });",
+                  "pm.test(\"message is a non-empty string\", () => { pm.expect(pm.response.json().message).to.be.a(\"string\").and.not.empty; });",
+                  "pm.test(\"has detail.received_type\", () => { pm.expect(pm.response.json().detail).to.have.property(\"received_type\"); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "invalid_type.txt"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/upload",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "upload"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Upload empty file",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 400\", () => { pm.response.to.have.status(400); });",
+                  "pm.test(\"error flag is true\", () => { pm.expect(pm.response.json().error).to.be.true; });",
+                  "pm.test(\"code is EMPTY_FILE\", () => { pm.expect(pm.response.json().code).to.eql(\"EMPTY_FILE\"); });",
+                  "pm.test(\"message is a non-empty string\", () => { pm.expect(pm.response.json().message).to.be.a(\"string\").and.not.empty; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "empty.csv"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/upload",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "upload"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Upload CSV with missing columns",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 422\", () => { pm.response.to.have.status(422); });",
+                  "pm.test(\"error flag is true\", () => { pm.expect(pm.response.json().error).to.be.true; });",
+                  "pm.test(\"code is MISSING_COLUMNS\", () => { pm.expect(pm.response.json().code).to.eql(\"MISSING_COLUMNS\"); });",
+                  "pm.test(\"message is a non-empty string\", () => { pm.expect(pm.response.json().message).to.be.a(\"string\").and.not.empty; });",
+                  "pm.test(\"has detail.missing_columns\", () => { pm.expect(pm.response.json().detail.missing_columns).to.be.an(\"array\").and.not.empty; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "missing_columns.csv"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/upload",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "upload"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Analyze with invalid file_id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 404\", () => { pm.response.to.have.status(404); });",
+                  "pm.test(\"error flag is true\", () => { pm.expect(pm.response.json().error).to.be.true; });",
+                  "pm.test(\"code is FILE_NOT_FOUND\", () => { pm.expect(pm.response.json().code).to.eql(\"FILE_NOT_FOUND\"); });",
+                  "pm.test(\"message is a non-empty string\", () => { pm.expect(pm.response.json().message).to.be.a(\"string\").and.not.empty; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"file_id\": \"does-not-exist\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/analyze",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "analyze"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Mitigate with invalid file_id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 404\", () => { pm.response.to.have.status(404); });",
+                  "pm.test(\"error flag is true\", () => { pm.expect(pm.response.json().error).to.be.true; });",
+                  "pm.test(\"code is FILE_NOT_FOUND\", () => { pm.expect(pm.response.json().code).to.eql(\"FILE_NOT_FOUND\"); });",
+                  "pm.test(\"message is a non-empty string\", () => { pm.expect(pm.response.json().message).to.be.a(\"string\").and.not.empty; });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"file_id\": \"does-not-exist\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/mitigate",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "mitigate"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

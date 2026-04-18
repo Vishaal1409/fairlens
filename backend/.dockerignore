@@ -1,18 +1,32 @@
-# Python cache
+# Virtual environments
+venv/
+.venv/
+
+# Python cache / artifacts
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# Virtual environment (never copy into image)
-venv/
-.venv/
+# Environment variables & DBs
+.env
+.env.*
+*.sqlite
+*.db
 
-# IDE / OS noise
-.DS_Store
-.idea/
-.vscode/
+# Source control & CI
+.git/
+.github/
 
-# Test artefacts
-*.log
-*.csv
+# Testing
+tests/
+*_test.py
+test_*.py
+
+# Node/Frontend
+node_modules/
+fairlens-frontend/
+
+# Local data cache
+uploads/
+data/

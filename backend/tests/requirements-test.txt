@@ -1,0 +1,5 @@
+# FairLens test dependencies — install with: pip install -r requirements-test.txt
+# Python 3.11 | Last updated: April 2026
+robotframework
+robotframework-requests
+robotframework-jsonlibrary
