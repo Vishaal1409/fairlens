@@ -2,6 +2,23 @@
 
 ---
 
+## 2026-04-15 (Arun)
+
+### fix: /mitigate endpoint robustness & test suites
+**Commits:** `bf21e21`, `1547836` → `feat/arun`
+
+#### Changed
+- `backend/api/routes.py` — added robustness to `/mitigate` endpoint:
+  - Added automatic categorical-to-numeric encoding (for `object` & `category` dtypes) before supplying data to AIF360 `BinaryLabelDataset` to avoid numerical parsing exceptions.
+  - Added safety checks for `np.nan` and zero-sum scenarios on Reweighing `instance_weights` before pandas dataframe resampling.
+- `backend/tests/` — reorganized internal test files:
+  - Moved end-to-end testing script `test_fastapi.py` into the `backend/tests/` folder.
+  - Cleaned up broken imports inside `test_analyzer.py`.
+- Repulled and synced `origin/main` changes before pushing to `feat/arun`.
+
+---
+
+
 ## 2026-04-14 (Arun)
 
 ### feat: add /mitigate endpoint with reweighing

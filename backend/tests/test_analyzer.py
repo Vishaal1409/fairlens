@@ -1,5 +1,5 @@
 import pandas as pd
-from backend.ml.analyzer import analyze
+from ml.analyzer import analyze
 
 
 def print_full_analysis(result):

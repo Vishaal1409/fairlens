@@ -560,8 +560,9 @@ def mitigate_file(request: MitigateRequest):
             privileged_groups = [{request.protected_col: privileged_group_val}]
 
             df_copy = df.copy()
-            # Convert string categories to categorical codes for AIF360 if needed, but it's simpler to let it handle it 
-            # if it fails we can convert, but typically user sends integers or strings.
+            # Convert string categories to categorical codes for AIF360
+            for col in df_copy.select_dtypes(include=['object', 'category']).columns:
+                df_copy[col] = df_copy[col].astype('category').cat.codes
         
             dataset = BinaryLabelDataset(
                 df=df_copy,
@@ -576,7 +577,11 @@ def mitigate_file(request: MitigateRequest):
 
             # Resample dataset using Reweighing weights to "apply" the weights to raw dataframe that analyze can use
             weights = dataset_transf.instance_weights
-            df_reweighed = df_copy.sample(n=len(df_copy), weights=weights, replace=True, random_state=42)
+            weights = np.nan_to_num(weights, nan=0.0)
+            if weights.sum() == 0:
+                weights = np.ones(len(weights))
+            df_reweighed = df.sample(n=len(df), weights=weights, replace=True, random_state=42)
+
         else:
             df_reweighed = df.copy()
 
