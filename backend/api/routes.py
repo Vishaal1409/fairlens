@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 import shap
 from fastapi import APIRouter, File, HTTPException, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from aif360.datasets import BinaryLabelDataset
 from aif360.algorithms.preprocessing import Reweighing
 
@@ -63,6 +63,8 @@ async def upload_csv(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail="Only .csv files are accepted.")
 
     contents = await file.read()
+    if len(contents) > 50 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large. Maximum size is 50MB.")
     try:
         df = pd.read_csv(io.BytesIO(contents))
     except Exception as exc:
@@ -110,6 +112,8 @@ async def upload_model(file: UploadFile = File(...)):
         )
 
     contents = await file.read()
+    if len(contents) > 50 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large. Maximum size is 50MB.")
     try:
         model = joblib.load(io.BytesIO(contents))
     except Exception as exc:
@@ -132,10 +136,10 @@ async def upload_model(file: UploadFile = File(...)):
 # POST /analyze
 # ---------------------------------------------------------------------------
 class AnalyzeRequest(BaseModel):
-    file_id:       str
-    protected_col: str
-    label_col:     str
-    predicted_col: str          # required by Vishaal's analyze()
+    file_id:       str = Field(..., min_length=1, description="Uploaded CSV file ID")
+    protected_col: str = Field(..., min_length=1, description="Protected attribute column name")
+    label_col:     str = Field(..., min_length=1, description="Target label column name")
+    predicted_col: str = Field(..., min_length=1, description="Model prediction column name")
 
 
 @router.post("/analyze", tags=["fairness"])
@@ -178,12 +182,16 @@ def analyze_file(request: AnalyzeRequest):
             )
 
     # Delegate to Vishaal's analyzer
-    results = analyze(
-        df,
-        request.protected_col,
-        request.label_col,
-        request.predicted_col,
-    )
+    try:
+        results = analyze(
+            df,
+            request.protected_col,
+            request.label_col,
+            request.predicted_col,
+        )
+    except Exception as exc:
+        logger.exception(f"analyze() failed in /analyze for file_id {request.file_id}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error during analysis: {exc}")
 
     return {
         "metrics":       results,
@@ -196,10 +204,10 @@ def analyze_file(request: AnalyzeRequest):
 # Pydantic models for /explain
 # ---------------------------------------------------------------------------
 class ExplainRequest(BaseModel):
-    file_id:       str
-    model_id:      str   # required — no KernelExplainer surrogate in v1
-    protected_col: str
-    label_col:     str
+    file_id:       str = Field(..., min_length=1)
+    model_id:      str = Field(..., min_length=1)
+    protected_col: str = Field(..., min_length=1)
+    label_col:     str = Field(..., min_length=1)
     # NOTE: predicted_col intentionally omitted — SHAP calls model.predict()
     # internally, so a pre-existing prediction column is not needed here.
 
@@ -367,10 +375,10 @@ async def explain_file(request: ExplainRequest):
 # Pydantic models for /infer-fairness
 # ---------------------------------------------------------------------------
 class InferFairnessRequest(BaseModel):
-    file_id:       str
-    model_id:      str
-    protected_col: str
-    label_col:     str
+    file_id:       str = Field(..., min_length=1)
+    model_id:      str = Field(..., min_length=1)
+    protected_col: str = Field(..., min_length=1)
+    label_col:     str = Field(..., min_length=1)
 
 
 class InferFairnessResponse(BaseModel):
@@ -495,10 +503,10 @@ def infer_and_check_fairness(request: InferFairnessRequest):
 # POST /mitigate
 # ---------------------------------------------------------------------------
 class MitigateRequest(BaseModel):
-    file_id:       str
-    protected_col: str
-    label_col:     str
-    predicted_col: str
+    file_id:       str = Field(..., min_length=1)
+    protected_col: str = Field(..., min_length=1)
+    label_col:     str = Field(..., min_length=1)
+    predicted_col: str = Field(..., min_length=1)
 
 
 class MitigateResponse(BaseModel):
