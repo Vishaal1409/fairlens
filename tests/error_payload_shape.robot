@@ -1,5 +1,5 @@
 *** Settings ***
-Resource    resources/fairlens_keywords.resource
+Resource    tests/resources/fairlens_keywords.resource
 Suite Setup    Create FairLens Session
 Test Tags    contract    payload-shape
 
@@ -53,6 +53,6 @@ Upload INVALID_FILE_TYPE payload has detail.received_type
 Upload MISSING_COLUMNS payload has detail.missing_columns list
     [Documentation]  Submitting incomplete payload logs precise empty elements structure.
     ${resp}=    POST On Session    fairlens    /upload
-    ...    files=file=fixtures/missing_columns.csv    expected_status=any
+    ...    files=file=tests/fixtures/missing_columns.csv    expected_status=any
     Assert Error Payload    ${resp}    MISSING_COLUMNS    ${422}
     Should Not Be Empty    ${resp.json()}[detail][missing_columns]

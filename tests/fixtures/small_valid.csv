@@ -1,0 +1,6 @@
+age,income,gender,loan_approved,predicted_approval
+35,65000,Male,1,1
+28,45000,Female,0,0
+42,85000,Female,1,1
+50,95000,Male,1,1
+22,25000,Male,0,0

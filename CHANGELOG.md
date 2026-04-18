@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Consolidated all test files, fixtures, datasets, and Postman collection under `tests/`
 - Download report button for exporting PDF/CSV summaries
 - Dataset comparison view for side-by-side bias scores
 - One-click mitigation code export functionality

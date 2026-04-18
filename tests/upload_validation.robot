@@ -1,5 +1,5 @@
 *** Settings ***
-Resource    resources/fairlens_keywords.resource
+Resource    tests/resources/fairlens_keywords.resource
 Suite Setup    Create FairLens Session
 Test Tags    upload    validation
 
@@ -8,13 +8,13 @@ Test Tags    upload    validation
 Valid small CSV upload succeeds
     [Documentation]  Happy path — small valid CSV returns 200 with correct body shape.
     ${resp}=    POST On Session    fairlens    /upload
-    ...    files=file=fixtures/small_valid.csv
+    ...    files=file=tests/fixtures/small_valid.csv
     Assert Success Upload Payload    ${resp}
 
 Wrong file type txt is rejected
     [Documentation]  .txt extension must return 400 with INVALID_FILE_TYPE code.
     ${resp}=    POST On Session    fairlens    /upload
-    ...    files=file=fixtures/invalid_type.txt    expected_status=any
+    ...    files=file=tests/fixtures/invalid_type.txt    expected_status=any
     Assert Error Payload    ${resp}    INVALID_FILE_TYPE    ${400}
     ${body}=    Set Variable    ${resp.json()}
     Dictionary Should Contain Key    ${body}[detail]    received_type
@@ -44,7 +44,7 @@ CSV with missing required columns is rejected
     [Documentation]  CSV lacking required columns returns 422 with MISSING_COLUMNS
     ...              and detail.missing_columns as a non-empty list.
     ${resp}=    POST On Session    fairlens    /upload
-    ...    files=file=fixtures/missing_columns.csv    expected_status=any
+    ...    files=file=tests/fixtures/missing_columns.csv    expected_status=any
     Assert Error Payload    ${resp}    MISSING_COLUMNS    ${422}
     ${body}=    Set Variable    ${resp.json()}
     Dictionary Should Contain Key    ${body}[detail]    missing_columns

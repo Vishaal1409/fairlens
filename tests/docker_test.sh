@@ -33,4 +33,10 @@ SIZE=$(docker image inspect fairlens-backend:local --format '{{.Size}}')
 SIZE_MB=$((SIZE / 1024 / 1024))
 echo "[*] Image size: $SIZE_MB MB"
 
+echo "[*] Installing test dependencies..."
+pip install -r tests/requirements-test.txt
+
+echo "[*] Executing tests against containerized API setup..."
+robot --outputdir results tests/
+
 echo "[✓] All local docker tests passed successfully!"

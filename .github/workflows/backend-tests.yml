@@ -21,13 +21,13 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install robotframework robotframework-requests robotframework-jsonlibrary
+        run: pip install -r tests/requirements-test.txt
 
       - name: Generate large fixtures
-        run: python backend/tests/fixtures/generate_fixtures.py --output-dir backend/tests/fixtures/ --sizes 51 100
+        run: python tests/fixtures/generate_fixtures.py --output-dir tests/fixtures/ --sizes 51 100
 
       - name: Run Robot Framework suites
-        run: robot --outputdir results backend/tests/
+        run: robot --outputdir results tests/
 
       - name: Upload results on failure
         uses: actions/upload-artifact@v4

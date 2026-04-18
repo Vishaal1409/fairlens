@@ -108,13 +108,15 @@ docker compose down
 All FairLens structural QA metrics run off `Robot Framework` tests evaluating accurate endpoint structures dynamically. To test your iterations locally:
 1. Load test module requirements.
    ```bash
-   pip install robotframework robotframework-requests robotframework-jsonlibrary
+   pip install -r tests/requirements-test.txt
    ```
 2. Run backend validation suites dynamically tracking output configurations into `results/`.
    ```bash
-   robot --outputdir results backend/tests/
+   robot --outputdir results tests/
    ```
 *Suites evaluated map file rejection caps (`bulk_large_file.robot`), foundational file assertions (`upload_validation.robot`), and precise standardized JSON schema responses logic (`error_payload_shape.robot`).*
+
+To perform programmatic logic through graphical validation models directly, reference the formal Postman collection: `tests/postman/fairlens_postman.json`.
 
 ## Project structure
 ```text
@@ -124,7 +126,6 @@ fairlens/
 ├── backend/
 │   ├── api/
 │   ├── ml/
-│   ├── tests/
 │   ├── main.py
 │   └── requirements.txt
 ├── fairlens-frontend/
@@ -132,6 +133,11 @@ fairlens/
 │   ├── src/
 │   ├── package.json
 │   └── vite.config.js
+├── tests/
+│   ├── fixtures/
+│   ├── postman/
+│   ├── resources/
+│   └── README.md
 ├── docker-compose.yml
 ├── CHANGELOG.md
 └── README.md

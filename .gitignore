@@ -22,27 +22,29 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-# Python
+# Python cache
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-*.egg-info/
-dist/
-build/
+*.py[cod]
+*$py.class
+*.so
 
 # Virtual environment
 venv/
 .venv/
 env/
+.env
 
-# IDE / OS
-.DS_Store
+# IDEs
 .idea/
 .vscode/
 
-# Uploaded files / test data
-*.csv
+# Ignore SQLite db
+fairlens.db
+
+# Test overrides
+results/
+tests/fixtures/data_*.csv
+tests/fixtures/large_*.csv
 *.log
 
 # Project documents (local reference only — not for version control)
