@@ -49,3 +49,4 @@ tests/fixtures/large_*.csv
 
 # Project documents (local reference only — not for version control)
 *.docx
+node_modules

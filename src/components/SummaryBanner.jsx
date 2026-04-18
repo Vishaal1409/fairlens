@@ -1,68 +1,50 @@
+import React from 'react';
+
 const SummaryBanner = ({ metrics }) => {
-    const scores = Object.values(metrics)
-    const avg = scores.reduce((a, b) => a + b, 0) / scores.length
+  const scores = Object.values(metrics);
+  if (scores.length === 0) return null;
 
-    const verdict =
-        avg >= 0.8 ? "Fair" :
-            avg >= 0.5 ? "Moderately Biased" :
-                "Highly Biased"
+  const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
 
-    const styles =
-        avg >= 0.8
-            ? { bg: "#EAFAF3", border: "#1D9E75", text: "#085041", dot: "#1D9E75" }
-            : avg >= 0.5
-                ? { bg: "#FAEEDA", border: "#EF9F27", text: "#633806", dot: "#EF9F27" }
-                : { bg: "#FCEBEB", border: "#E24B4A", text: "#501313", dot: "#E24B4A" }
+  let styles = {};
+  let label = "";
 
-    return (
-        <div style={{
-            background: styles.bg,
-            border: `1px solid ${styles.border}`,
-            borderRadius: "12px",
-            padding: "1rem 1.25rem",
-            marginBottom: "1.5rem",
-            display: "flex",
-            alignItems: "center",
-            gap: "12px"
-        }}>
-            <div style={{
-                width: "10px", height: "10px", borderRadius: "50%",
-                background: styles.dot, flexShrink: 0
-            }} />
-            <div>
-                <div style={{ fontSize: "13px", color: styles.text, opacity: 0.7 }}>
-                    Overall verdict
-                </div>
-                <div style={{ fontSize: "16px", fontWeight: 500, color: styles.text }}>
-                    {verdict} — avg score: {avg.toFixed(2)}
-                </div>
-            </div>
-        </div>
-    )
-  const scores = Object.values(metrics)
-
-  const avg =
-    scores.reduce((a, b) => a + b, 0) / scores.length
-
-  let color = ""
-  let label = ""
-
-  if (avg >= 0.7) {
-    color = "bg-green-100 text-green-700"
-    label = "Fair"
+  if (avg >= 0.8) {
+    label = "Fair";
+    styles = {
+      wrapper: "bg-emerald-500/10 border-emerald-500/20",
+      text: "text-emerald-400",
+      dot: "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"
+    };
   } else if (avg >= 0.5) {
-    color = "bg-yellow-100 text-yellow-700"
-    label = "Moderate Bias"
+    label = "Moderately Biased";
+    styles = {
+      wrapper: "bg-amber-500/10 border-amber-500/20",
+      text: "text-amber-400",
+      dot: "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]"
+    };
   } else {
-    color = "bg-red-100 text-red-700"
-    label = "High Bias"
+    label = "Highly Biased";
+    styles = {
+      wrapper: "bg-rose-500/10 border-rose-500/20",
+      text: "text-rose-400",
+      dot: "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]"
+    };
   }
 
   return (
-    <div className={`p-4 rounded-xl ${color} font-semibold`}>
-      Overall Verdict: {label} (Score: {avg.toFixed(2)})
+    <div className={`p-4 rounded-xl border flex items-center gap-3 mb-6 ${styles.wrapper}`}>
+      <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${styles.dot}`} />
+      <div>
+        <div className="text-[12px] text-[#cac4d0] font-medium tracking-wide uppercase mb-0.5">
+          Overall Verdict
+        </div>
+        <div className={`text-[15px] font-semibold tracking-tight ${styles.text}`}>
+          {label} — Avg Score: {avg.toFixed(2)}
+        </div>
+      </div>
     </div>
-  )
-}
+  );
+};
 
-export default SummaryBanner
+export default SummaryBanner;
