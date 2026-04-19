@@ -4,10 +4,9 @@ FairLens API routes
 /upload          – accept a CSV, store the DataFrame in memory, return metadata
 /upload-model    – accept a .pkl or .joblib model file, store in memory, return model_id
 /analyze         – run fairness metrics on a previously uploaded file
-/explain         – compute SHAP + LIME feature importances for an uploaded CSV + model
+/explain         – compute SHAP feature importances for an uploaded CSV + model (top-10)
 /infer-fairness  – run model.predict() on an uploaded CSV then compute fairness metrics
 /mitigate        – apply AIF360 Reweighing and return before/after metrics
-/export-code     – return ready-to-run Python mitigation code for one-click export
 """
 
 import asyncio
@@ -22,7 +21,6 @@ import numpy as np
 import pandas as pd
 import shap
 from fastapi import APIRouter, File, HTTPException, UploadFile
-from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from aif360.datasets import BinaryLabelDataset
 from aif360.algorithms.preprocessing import Reweighing
@@ -36,38 +34,175 @@ router = APIRouter()
 # ---------------------------------------------------------------------------
 # Shared in-memory stores
 # ---------------------------------------------------------------------------
-uploaded_files:  dict[str, pd.DataFrame] = {}   # file_id  -> DataFrame
-uploaded_models: dict[str, object]       = {}   # model_id -> trained model
+uploaded_files: dict[str, pd.DataFrame] = {}
+uploaded_models: dict[str, object] = {}
+
+_SHAP_SAMPLE_CAP = 1_000
+_INFER_ROW_CAP   = 100_000
+
+ACCEPTED_CSV_EXTENSIONS  = (".csv",)
+ACCEPTED_MODEL_EXTENSIONS = (".pkl", ".joblib")
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+def _get_file_or_404(file_id: str) -> pd.DataFrame:
+    """
+    Fetch a previously uploaded DataFrame by file_id.
+    Raises a clear 404 if not found, with a hint about why it might be missing.
+    """
+    if file_id not in uploaded_files:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"File ID '{file_id}' not found. "
+                "This usually means the server was restarted and lost in-memory data, "
+                "or the file_id is incorrect. Please re-upload your CSV via POST /upload."
+            ),
+        )
+    return uploaded_files[file_id]
+
+
+def _get_model_or_404(model_id: str) -> object:
+    """
+    Fetch a previously uploaded model by model_id.
+    Raises a clear 404 if not found.
+    """
+    if model_id not in uploaded_models:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"Model ID '{model_id}' not found. "
+                "This usually means the server was restarted and lost in-memory data, "
+                "or the model_id is incorrect. Please re-upload your model via POST /upload-model."
+            ),
+        )
+    return uploaded_models[model_id]
+
+
+def _validate_columns_in_df(df: pd.DataFrame, **col_kwargs) -> None:
+    """
+    Validate that named columns exist in the DataFrame.
+    col_kwargs: param_name -> column_value  e.g. protected_col="gender"
+
+    Raises HTTPException 422 with a clear message listing all missing columns
+    and all available columns in the dataset.
+    """
+    missing = {
+        param: col for param, col in col_kwargs.items()
+        if col not in df.columns
+    }
+    if missing:
+        details = ", ".join(
+            f"'{col}' (passed as {param})" for param, col in missing.items()
+        )
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"The following columns were not found in your dataset: {details}. "
+                f"Available columns are: {df.columns.tolist()}. "
+                "Check for typos or case mismatches in your column names."
+            ),
+        )
+
+
+def _build_feature_matrix(
+    df: pd.DataFrame,
+    label_col: str,
+    protected_col: str,
+    model: object,
+) -> pd.DataFrame:
+    """
+    Drop target/sensitive columns, keep only numeric columns, and align to
+    the model's expected feature order when possible.
+
+    Raises ValueError with a descriptive message on column mismatch.
+    """
+    drop_cols = {label_col, protected_col} & set(df.columns)
+    X = df.drop(columns=list(drop_cols)).select_dtypes(include="number")
+
+    if X.empty:
+        raise ValueError(
+            f"No numeric feature columns remain after dropping '{label_col}' and '{protected_col}'. "
+            "Ensure your CSV contains numeric feature columns beyond the label and protected attribute."
+        )
+
+    if hasattr(model, "feature_names_in_"):
+        expected = list(model.feature_names_in_)
+        missing  = set(expected) - set(X.columns)
+        extra    = set(X.columns) - set(expected)
+        if missing:
+            raise ValueError(
+                f"Your CSV is missing {len(missing)} feature(s) that the model was trained on: "
+                f"{sorted(missing)}. "
+                f"Expected features: {expected}. "
+                f"Unexpected extra columns in CSV: {sorted(extra) if extra else 'none'}."
+            )
+        X = X[expected]
+    else:
+        logger.warning(
+            "Model has no 'feature_names_in_' attribute. Using positional column order: %s. "
+            "Ensure CSV feature columns are in the same order as training data.",
+            list(X.columns),
+        )
+
+    return X
 
 
 # ---------------------------------------------------------------------------
 # POST /upload
 # ---------------------------------------------------------------------------
-@router.post(
-    "/upload",
-    tags=["data"],
-    summary="Upload a CSV dataset",
-    description=(
-        "Upload a CSV file for fairness analysis. "
-        "Returns a file_id to use in subsequent /analyze, /explain, /mitigate calls, "
-        "along with column names, a 5-row preview, and total row count."
-    ),
-)
+@router.post("/upload", tags=["data"])
 async def upload_csv(file: UploadFile = File(...)):
-    if not file.filename.endswith(".csv"):
-        raise HTTPException(status_code=400, detail="Only .csv files are accepted.")
+    """
+    Accept a CSV file and return metadata + a 5-row preview.
+    """
+    logger.info("POST /upload — filename='%s'", file.filename)
+
+    if not file.filename.lower().endswith(ACCEPTED_CSV_EXTENSIONS):
+        logger.warning("Rejected upload: unsupported file type '%s'", file.filename)
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Only CSV files are accepted (got '{file.filename}'). "
+                "Please upload a file with a .csv extension."
+            ),
+        )
 
     contents = await file.read()
+
+    if len(contents) == 0:
+        raise HTTPException(
+            status_code=422,
+            detail="The uploaded file is empty. Please upload a non-empty CSV file.",
+        )
+
     try:
         df = pd.read_csv(io.BytesIO(contents))
     except Exception as exc:
-        raise HTTPException(status_code=422, detail=f"Could not parse CSV: {exc}")
+        logger.error("CSV parse error for '%s': %s", file.filename, str(exc))
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Could not parse '{file.filename}' as a valid CSV: {exc}. "
+                "Ensure the file is UTF-8 encoded and uses commas as delimiters."
+            ),
+        )
 
-    if len(df) == 0:
-        raise HTTPException(status_code=422, detail="Uploaded CSV is empty.")
+    if df.empty:
+        raise HTTPException(
+            status_code=422,
+            detail="The uploaded CSV has no rows. Please upload a file with at least one data row.",
+        )
 
     file_id = uuid.uuid4().hex[:8]
     uploaded_files[file_id] = df
+
+    logger.info(
+        "CSV uploaded successfully | file_id='%s', rows=%d, columns=%s",
+        file_id, len(df), df.columns.tolist()
+    )
 
     return {
         "file_id":   file_id,
@@ -86,37 +221,53 @@ class ModelUploadResponse(BaseModel):
     type:     str
 
 
-@router.post(
-    "/upload-model",
-    tags=["models"],
-    response_model=ModelUploadResponse,
-    summary="Upload a trained ML model",
-    description=(
-        "Upload a serialized sklearn model (.pkl or .joblib). "
-        "Returns a model_id to use in /explain and /infer-fairness calls."
-    ),
-)
+@router.post("/upload-model", tags=["models"], response_model=ModelUploadResponse)
 async def upload_model(file: UploadFile = File(...)):
-    if not (file.filename.endswith(".pkl") or file.filename.endswith(".joblib")):
+    """
+    Accept a serialized model (.pkl or .joblib) and store it in memory.
+    """
+    logger.info("POST /upload-model — filename='%s'", file.filename)
+
+    if not file.filename.lower().endswith(ACCEPTED_MODEL_EXTENSIONS):
+        logger.warning("Rejected model upload: unsupported extension '%s'", file.filename)
         raise HTTPException(
             status_code=400,
-            detail="Only .pkl or .joblib model files are accepted.",
+            detail=(
+                f"Only .pkl or .joblib model files are accepted (got '{file.filename}'). "
+                "Serialize your model with joblib.dump() or pickle.dump() and re-upload."
+            ),
         )
 
     contents = await file.read()
+
+    if len(contents) == 0:
+        raise HTTPException(
+            status_code=422,
+            detail="The uploaded model file is empty. Please upload a valid serialized model.",
+        )
+
     try:
         model = joblib.load(io.BytesIO(contents))
     except Exception as exc:
-        raise HTTPException(status_code=422, detail=f"Could not deserialise model: {exc}")
+        logger.error("Model deserialisation failed for '%s': %s", file.filename, str(exc))
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Could not deserialise '{file.filename}': {exc}. "
+                "Ensure the model was saved with joblib.dump() using a compatible scikit-learn version."
+            ),
+        )
 
     model_id = uuid.uuid4().hex[:8]
     uploaded_models[model_id] = model
 
-    return ModelUploadResponse(
-        model_id=model_id,
-        status="uploaded",
-        type=str(type(model)),
+    model_type = str(type(model))
+    logger.info(
+        "Model uploaded successfully | model_id='%s', type=%s",
+        model_id, model_type
     )
+
+    return ModelUploadResponse(model_id=model_id, status="uploaded", type=model_type)
 
 
 # ---------------------------------------------------------------------------
@@ -129,40 +280,26 @@ class AnalyzeRequest(BaseModel):
     predicted_col: str
 
 
-@router.post(
-    "/analyze",
-    tags=["fairness"],
-    summary="Run fairness metrics on an uploaded dataset",
-    description=(
-        "Runs 5 fairness metrics (Demographic Parity, Disparate Impact, Equal Opportunity, "
-        "Calibration, Predictive Parity) on a previously uploaded CSV. "
-        "Also returns SHAP + LIME explainability values and AIF360 mitigation results. "
-        "Requires file_id from /upload and column names for protected attribute, label, and predictions."
-    ),
-)
+@router.post("/analyze", tags=["fairness"])
 def analyze_file(request: AnalyzeRequest):
-    if request.file_id not in uploaded_files:
-        raise HTTPException(
-            status_code=404,
-            detail="File not found. Upload it first via POST /upload.",
-        )
+    """
+    Run fairness metrics on a previously uploaded CSV.
+    """
+    logger.info(
+        "POST /analyze | file_id='%s', protected='%s', label='%s', predicted='%s'",
+        request.file_id, request.protected_col, request.label_col, request.predicted_col
+    )
 
-    df = uploaded_files[request.file_id]
+    df = _get_file_or_404(request.file_id)
 
-    for col_name, col_val in {
-        "protected_col": request.protected_col,
-        "label_col":     request.label_col,
-        "predicted_col": request.predicted_col,
-    }.items():
-        if col_val not in df.columns:
-            raise HTTPException(
-                status_code=422,
-                detail=(
-                    f"Column '{col_val}' (passed as {col_name}) not found. "
-                    f"Available columns: {df.columns.tolist()}"
-                ),
-            )
+    _validate_columns_in_df(
+        df,
+        protected_col=request.protected_col,
+        label_col=request.label_col,
+        predicted_col=request.predicted_col,
+    )
 
+    logger.info("Running analyzer on %d rows...", len(df))
     try:
         results = analyze(
             df,
@@ -171,8 +308,19 @@ def analyze_file(request: AnalyzeRequest):
             request.predicted_col,
         )
     except ValueError as exc:
+        logger.error("Validation error in analyzer: %s", str(exc))
         raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:
+        logger.exception("Unexpected error in analyze_file")
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"An unexpected error occurred during fairness analysis: {exc}. "
+                "Please check server logs for more details."
+            ),
+        )
 
+    logger.info("Analysis complete for file_id='%s'", request.file_id)
     return {
         "metrics":       results,
         "protected_col": request.protected_col,
@@ -195,37 +343,8 @@ class ExplainResponse(BaseModel):
     status:      Literal["complete", "error"]
 
 
-def _build_feature_matrix(
-    df: pd.DataFrame,
-    label_col: str,
-    protected_col: str,
-    model: object,
-) -> pd.DataFrame:
-    drop_cols = {label_col, protected_col} & set(df.columns)
-    X = df.drop(columns=list(drop_cols)).select_dtypes(include="number")
-
-    if hasattr(model, "feature_names_in_"):
-        expected = list(model.feature_names_in_)
-        missing  = set(expected) - set(X.columns)
-        if missing:
-            raise ValueError(
-                f"CSV is missing model features: {sorted(missing)}. "
-                f"Expected features: {expected}"
-            )
-        X = X[expected]
-    else:
-        logger.warning(
-            "Model has no feature_names_in_ attribute; using positional column order. "
-            "Columns used: %s", list(X.columns),
-        )
-
-    return X
-
-
-_SHAP_SAMPLE_CAP = 1_000
-
-
 def _compute_shap(model: object, background: pd.DataFrame) -> np.ndarray:
+    """Blocking SHAP computation — always call via run_in_executor."""
     explainer = shap.Explainer(model, background)
     shap_obj  = explainer(background)
     values    = shap_obj.values
@@ -234,58 +353,64 @@ def _compute_shap(model: object, background: pd.DataFrame) -> np.ndarray:
     return values
 
 
-@router.post(
-    "/explain",
-    tags=["explainability"],
-    response_model=ExplainResponse,
-    summary="Compute SHAP feature importances for a model + dataset",
-    description=(
-        "Runs SHAP (SHapley Additive exPlanations) on an uploaded CSV + model. "
-        "Returns the top-10 features by mean absolute SHAP value. "
-        "SHAP runs in a background thread to avoid blocking. "
-        "Requires both file_id (from /upload) and model_id (from /upload-model)."
-    ),
-)
+@router.post("/explain", tags=["explainability"], response_model=ExplainResponse)
 async def explain_file(request: ExplainRequest):
-    if request.file_id not in uploaded_files:
-        raise HTTPException(status_code=404, detail="File not found. Upload a CSV first via POST /upload.")
-    if request.model_id not in uploaded_models:
-        raise HTTPException(status_code=404, detail="Model not found. Upload a model first via POST /upload-model.")
+    """
+    Compute SHAP feature importances for a previously uploaded CSV + model.
+    Returns top-10 features by mean absolute SHAP value.
+    """
+    logger.info(
+        "POST /explain | file_id='%s', model_id='%s'",
+        request.file_id, request.model_id
+    )
 
-    df    = uploaded_files[request.file_id]
-    model = uploaded_models[request.model_id]
+    df    = _get_file_or_404(request.file_id)
+    model = _get_model_or_404(request.model_id)
 
-    for col_name, col_val in {
-        "protected_col": request.protected_col,
-        "label_col":     request.label_col,
-    }.items():
-        if col_val not in df.columns:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Column '{col_val}' (passed as {col_name}) not found. Available: {df.columns.tolist()}",
-            )
+    _validate_columns_in_df(
+        df,
+        protected_col=request.protected_col,
+        label_col=request.label_col,
+    )
 
     try:
-        X          = _build_feature_matrix(df, request.label_col, request.protected_col, model)
+        X = _build_feature_matrix(df, request.label_col, request.protected_col, model)
+
         n_rows     = len(X)
         background = shap.sample(X, min(_SHAP_SAMPLE_CAP, n_rows))
+        if n_rows > _SHAP_SAMPLE_CAP:
+            logger.info(
+                "SHAP background capped at %d rows (dataset has %d rows).",
+                _SHAP_SAMPLE_CAP, n_rows
+            )
 
+        logger.info("Running SHAP in thread pool (non-blocking)...")
         loop = asyncio.get_event_loop()
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
             shap_matrix = await loop.run_in_executor(pool, _compute_shap, model, background)
 
         mean_abs     = np.abs(shap_matrix).mean(axis=0)
         feature_names = list(background.columns)
-        ranked       = sorted(zip(feature_names, mean_abs.tolist()), key=lambda p: p[1], reverse=True)
-        top10        = {name: round(float(val), 6) for name, val in ranked[:10]}
+        ranked = sorted(zip(feature_names, mean_abs.tolist()), key=lambda p: p[1], reverse=True)
+        top10  = {name: round(float(val), 6) for name, val in ranked[:10]}
+
+        logger.info("SHAP complete. Top feature: '%s' = %.4f", *next(iter(top10.items())))
 
     except HTTPException:
         raise
     except ValueError as exc:
+        logger.error("Feature matrix error in /explain: %s", str(exc))
         raise HTTPException(status_code=422, detail=str(exc))
     except Exception as exc:
-        logger.exception("SHAP computation failed")
-        raise HTTPException(status_code=500, detail=f"SHAP computation error: {exc}")
+        logger.exception("SHAP computation failed in /explain")
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"SHAP computation failed: {exc}. "
+                "Common causes: model type not supported by shap.Explainer, "
+                "feature mismatch between CSV and model, or insufficient memory."
+            ),
+        )
 
     return ExplainResponse(shap_values=top10, status="complete")
 
@@ -301,81 +426,82 @@ class InferFairnessRequest(BaseModel):
 
 
 class InferFairnessResponse(BaseModel):
-    metrics:       dict
+    metrics:       dict[str, float]
     protected_col: str
     status:        Literal["complete", "error"]
 
 
-_INFER_ROW_CAP = 100_000
-
-
-@router.post(
-    "/infer-fairness",
-    tags=["fairness"],
-    response_model=InferFairnessResponse,
-    summary="Run model predictions then compute fairness metrics",
-    description=(
-        "Loads an uploaded model and runs predict() on an uploaded CSV, "
-        "then computes fairness metrics via the FairLens analyzer. "
-        "Useful when you don't have a pre-existing predictions column. "
-        "Capped at 100,000 rows — larger datasets are silently truncated."
-    ),
-)
+@router.post("/infer-fairness", tags=["fairness"], response_model=InferFairnessResponse)
 def infer_and_check_fairness(request: InferFairnessRequest):
-    if request.file_id not in uploaded_files:
-        raise HTTPException(status_code=404, detail="File not found. Upload a CSV first via POST /upload.")
-    if request.model_id not in uploaded_models:
-        raise HTTPException(status_code=404, detail="Model not found. Upload a model first via POST /upload-model.")
+    """
+    Run model.predict() on an uploaded CSV, then compute fairness metrics.
+    """
+    logger.info(
+        "POST /infer-fairness | file_id='%s', model_id='%s', protected='%s', label='%s'",
+        request.file_id, request.model_id, request.protected_col, request.label_col
+    )
 
-    df    = uploaded_files[request.file_id]
-    model = uploaded_models[request.model_id]
+    df    = _get_file_or_404(request.file_id)
+    model = _get_model_or_404(request.model_id)
 
-    for col_name, col_val in {
-        "protected_col": request.protected_col,
-        "label_col":     request.label_col,
-    }.items():
-        if col_val not in df.columns:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Column '{col_val}' (passed as {col_name}) not found. Available: {df.columns.tolist()}",
-            )
+    _validate_columns_in_df(
+        df,
+        protected_col=request.protected_col,
+        label_col=request.label_col,
+    )
 
     try:
         X = _build_feature_matrix(df, request.label_col, request.protected_col, model)
     except ValueError as exc:
+        logger.error("Feature matrix build failed in /infer-fairness: %s", str(exc))
         raise HTTPException(status_code=422, detail=str(exc))
 
     if len(X) > _INFER_ROW_CAP:
+        logger.warning(
+            "Dataset truncated from %d to %d rows for inference (cap = %d).",
+            len(X), _INFER_ROW_CAP, _INFER_ROW_CAP
+        )
         X = X.iloc[:_INFER_ROW_CAP]
-        logger.warning("Dataset truncated to %d rows for inference.", _INFER_ROW_CAP)
 
+    logger.info("Running model.predict() on %d rows...", len(X))
     try:
         predictions = model.predict(X)
     except (ValueError, IndexError) as exc:
         n_csv   = X.shape[1]
-        n_model = getattr(model, "n_features_in_", "?")
+        n_model = getattr(model, "n_features_in_", "unknown")
+        expected_names = (
+            list(model.feature_names_in_)
+            if hasattr(model, "feature_names_in_")
+            else "not available (model has no feature_names_in_ attribute)"
+        )
+        logger.error("model.predict() shape mismatch: CSV=%d cols, model expects=%s", n_csv, n_model)
         raise HTTPException(
             status_code=422,
             detail=(
-                f"Shape mismatch: model expects {n_model} features, CSV provides {n_csv}. "
+                f"Shape mismatch: model expects {n_model} feature(s), "
+                f"but your CSV provides {n_csv} feature(s) after dropping label/protected columns. "
+                f"Expected feature names: {expected_names}. "
                 f"Original error: {exc}"
             ),
         )
 
-    df_copy  = df.iloc[: len(X)].copy()
+    df_copy  = df.iloc[:len(X)].copy()
     pred_col = "_fairlens_pred_"
     if pred_col in df_copy.columns:
         pred_col = f"_fairlens_pred_{uuid.uuid4().hex[:4]}_"
     df_copy[pred_col] = predictions
 
+    logger.info("Predictions attached. Running fairness analysis...")
     try:
         results = analyze(df_copy, request.protected_col, request.label_col, pred_col)
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc))
     except Exception as exc:
         logger.exception("analyze() failed in /infer-fairness")
-        raise HTTPException(status_code=500, detail=f"Fairness computation error: {exc}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Fairness analysis failed after inference: {exc}",
+        )
 
+    logger.info("infer-fairness complete for file_id='%s'", request.file_id)
     return InferFairnessResponse(
         metrics=results,
         protected_col=request.protected_col,
@@ -394,58 +520,62 @@ class MitigateRequest(BaseModel):
 
 
 class MitigateResponse(BaseModel):
-    before: dict
-    after:  dict
+    before: dict[str, float]
+    after:  dict[str, float]
     status: Literal["complete", "error"]
 
 
-@router.post(
-    "/mitigate",
-    tags=["fairness"],
-    response_model=MitigateResponse,
-    summary="Apply bias mitigation and return before/after metrics",
-    description=(
-        "Applies AIF360 Reweighing to the uploaded dataset to reduce bias. "
-        "Returns fairness metrics both before and after mitigation so you can "
-        "see the improvement. Automatically detects privileged and unprivileged groups."
-    ),
-)
+@router.post("/mitigate", tags=["fairness"], response_model=MitigateResponse)
 def mitigate_file(request: MitigateRequest):
-    if request.file_id not in uploaded_files:
-        raise HTTPException(status_code=404, detail="File not found. Upload a CSV first via POST /upload.")
+    """
+    Apply AIF360 Reweighing on an uploaded dataset and return before/after metrics.
+    """
+    logger.info(
+        "POST /mitigate | file_id='%s', protected='%s', label='%s', predicted='%s'",
+        request.file_id, request.protected_col, request.label_col, request.predicted_col
+    )
 
-    df = uploaded_files[request.file_id]
+    df = _get_file_or_404(request.file_id)
 
-    for col_name, col_val in {
-        "protected_col": request.protected_col,
-        "label_col":     request.label_col,
-        "predicted_col": request.predicted_col,
-    }.items():
-        if col_val not in df.columns:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Column '{col_val}' (passed as {col_name}) not found. Available: {df.columns.tolist()}",
-            )
+    _validate_columns_in_df(
+        df,
+        protected_col=request.protected_col,
+        label_col=request.label_col,
+        predicted_col=request.predicted_col,
+    )
 
     try:
-        before_metrics = analyze(df, request.protected_col, request.label_col, request.predicted_col)
+        logger.info("Computing BEFORE metrics...")
+        before_metrics = analyze(
+            df, request.protected_col, request.label_col, request.predicted_col
+        )
 
-        groups   = df[request.protected_col].unique()
+        groups    = df[request.protected_col].unique()
         pos_rates = {}
         for group in groups:
-            group_df       = df[df[request.protected_col] == group]
-            pos_rates[group] = (group_df[request.label_col] == 1).mean() if len(group_df) else 0.0
+            group_df = df[df[request.protected_col] == group]
+            pos_rates[group] = (group_df[request.label_col] == 1).mean() if len(group_df) > 0 else 0.0
 
-        privileged_group_val = max(pos_rates, key=pos_rates.get) if pos_rates else None
+        if len(groups) < 2:
+            raise ValueError(
+                f"Mitigation requires at least 2 groups in '{request.protected_col}'. "
+                f"Found only: {groups.tolist()}."
+            )
 
-        if len(groups) > 1 and privileged_group_val is not None:
-            unprivileged_groups = [{request.protected_col: g} for g in groups if g != privileged_group_val]
-            privileged_groups   = [{request.protected_col: privileged_group_val}]
+        privileged_group_val = max(pos_rates, key=pos_rates.get)
+        unprivileged_groups  = [{request.protected_col: g} for g in groups if g != privileged_group_val]
+        privileged_groups    = [{request.protected_col: privileged_group_val}]
 
-            df_copy = df.copy()
-            for col in df_copy.select_dtypes(include=["object", "category"]).columns:
-                df_copy[col] = df_copy[col].astype("category").cat.codes
+        logger.info(
+            "Privileged group: '%s', Unprivileged: %s",
+            privileged_group_val,
+            [g[request.protected_col] for g in unprivileged_groups]
+        )
 
+        df_copy = df.copy()
+
+        logger.info("Building AIF360 BinaryLabelDataset...")
+        try:
             dataset = BinaryLabelDataset(
                 df=df_copy,
                 label_names=[request.label_col],
@@ -453,174 +583,53 @@ def mitigate_file(request: MitigateRequest):
                 favorable_label=1,
                 unfavorable_label=0,
             )
+        except Exception as exc:
+            raise ValueError(
+                f"Failed to build AIF360 dataset: {exc}. "
+                "Ensure your label column contains only 0 and 1 values, "
+                "and the protected attribute column is either numeric or has exactly 2 unique values."
+            )
 
-            rw              = Reweighing(unprivileged_groups=unprivileged_groups, privileged_groups=privileged_groups)
-            dataset_transf  = rw.fit_transform(dataset)
-            weights         = dataset_transf.instance_weights
-            weights         = np.nan_to_num(weights, nan=0.0)
-            if weights.sum() == 0:
-                weights = np.ones(len(weights))
+        logger.info("Fitting and applying Reweighing transform...")
+        rw = Reweighing(
+            unprivileged_groups=unprivileged_groups,
+            privileged_groups=privileged_groups,
+        )
+        dataset_transf = rw.fit_transform(dataset)
 
-            df_reweighed = df.sample(n=len(df), weights=weights, replace=True, random_state=42)
-        else:
-            df_reweighed = df.copy()
+        weights      = dataset_transf.instance_weights
+        df_reweighed = df_copy.sample(
+            n=len(df_copy), weights=weights, replace=True, random_state=42
+        )
 
-        after_metrics = analyze(df_reweighed, request.protected_col, request.label_col, request.predicted_col)
+        logger.info("Computing AFTER metrics on reweighed dataset...")
+        after_metrics = analyze(
+            df_reweighed, request.protected_col, request.label_col, request.predicted_col
+        )
+
+        logger.info(
+            "Mitigation complete | DP: %.4f→%.4f | DI: %.4f→%.4f | EO: %.4f→%.4f",
+            before_metrics.get("demographic_parity", 0), after_metrics.get("demographic_parity", 0),
+            before_metrics.get("disparate_impact",   0), after_metrics.get("disparate_impact",   0),
+            before_metrics.get("equal_opportunity",  0), after_metrics.get("equal_opportunity",  0),
+        )
 
     except ValueError as exc:
+        logger.error("Validation error in /mitigate: %s", str(exc))
         raise HTTPException(status_code=422, detail=str(exc))
     except Exception as exc:
-        logger.exception("Reweighing failed in /mitigate")
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {exc}")
+        logger.exception("Unexpected error in /mitigate")
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Mitigation failed: {exc}. "
+                "Common causes: non-binary label values, AIF360 installation issues on Apple Silicon, "
+                "or protected column with more than 2 groups."
+            ),
+        )
 
-    return MitigateResponse(before=before_metrics, after=after_metrics, status="complete")
-
-
-# ---------------------------------------------------------------------------
-# POST /export-code
-# ---------------------------------------------------------------------------
-class ExportCodeRequest(BaseModel):
-    protected_col: str
-    label_col:     str
-    predicted_col: str
-    strategy:      Literal["reweighing", "disparate_impact_remover"] = "reweighing"
-
-
-@router.post(
-    "/export-code",
-    tags=["export"],
-    response_class=PlainTextResponse,
-    summary="Export ready-to-run Python mitigation code",
-    description=(
-        "Returns a complete, self-contained Python script that applies the chosen "
-        "bias mitigation strategy (Reweighing or Disparate Impact Remover) to your dataset. "
-        "Copy and run it locally — no FairLens server needed. "
-        "Strategy options: 'reweighing' (default) or 'disparate_impact_remover'."
-    ),
-)
-def export_mitigation_code(request: ExportCodeRequest):
-    protected = request.protected_col
-    label     = request.label_col
-    predicted = request.predicted_col
-    strategy  = request.strategy
-
-    if strategy == "reweighing":
-        code = f'''"""
-FairLens — Auto-generated Bias Mitigation Script
-Strategy : Reweighing (AIF360)
-Generated: via POST /export-code
-
-Instructions:
-  1. pip install aif360 pandas scikit-learn
-  2. Replace 'your_dataset.csv' with your actual file path
-  3. Run: python fairlens_mitigation.py
-"""
-
-import pandas as pd
-import numpy as np
-from aif360.datasets import BinaryLabelDataset
-from aif360.algorithms.preprocessing import Reweighing
-
-# ── Load your dataset ────────────────────────────────────────────
-df = pd.read_csv("your_dataset.csv")
-
-PROTECTED_COL = "{protected}"
-LABEL_COL     = "{label}"
-PREDICTED_COL = "{predicted}"
-
-# ── Encode string columns to numeric if needed ───────────────────
-for col in df.select_dtypes(include=["object", "category"]).columns:
-    df[col] = df[col].astype("category").cat.codes
-
-# ── Auto-detect privileged group ─────────────────────────────────
-groups    = df[PROTECTED_COL].unique()
-pos_rates = {{
-    g: (df[df[PROTECTED_COL] == g][LABEL_COL] == 1).mean()
-    for g in groups
-}}
-privileged_val      = max(pos_rates, key=pos_rates.get)
-privileged_groups   = [{{PROTECTED_COL: privileged_val}}]
-unprivileged_groups = [{{PROTECTED_COL: g}} for g in groups if g != privileged_val]
-
-print(f"Privileged group   : {{privileged_val}}")
-print(f"Unprivileged groups: {{[g[PROTECTED_COL] for g in unprivileged_groups]}}")
-
-# ── Build AIF360 dataset ─────────────────────────────────────────
-dataset = BinaryLabelDataset(
-    df=df,
-    label_names=[LABEL_COL],
-    protected_attribute_names=[PROTECTED_COL],
-    favorable_label=1,
-    unfavorable_label=0,
-)
-
-# ── Apply Reweighing ─────────────────────────────────────────────
-rw             = Reweighing(unprivileged_groups=unprivileged_groups, privileged_groups=privileged_groups)
-dataset_transf = rw.fit_transform(dataset)
-
-weights = dataset_transf.instance_weights
-weights = np.nan_to_num(weights, nan=0.0)
-if weights.sum() == 0:
-    weights = np.ones(len(weights))
-
-# ── Resample dataset using learned weights ────────────────────────
-df_reweighed = df.sample(n=len(df), weights=weights, replace=True, random_state=42)
-
-# ── Save result ──────────────────────────────────────────────────
-df_reweighed.to_csv("reweighed_dataset.csv", index=False)
-print("\\nDone! Reweighed dataset saved to: reweighed_dataset.csv")
-print(f"Original rows : {{len(df)}}")
-print(f"Reweighed rows: {{len(df_reweighed)}}")
-'''
-
-    else:  # disparate_impact_remover
-        code = f'''"""
-FairLens — Auto-generated Bias Mitigation Script
-Strategy : Disparate Impact Remover (AIF360)
-Generated: via POST /export-code
-
-Instructions:
-  1. pip install aif360 pandas scikit-learn
-  2. Replace 'your_dataset.csv' with your actual file path
-  3. Run: python fairlens_mitigation.py
-"""
-
-import pandas as pd
-import numpy as np
-from aif360.datasets import BinaryLabelDataset
-from aif360.algorithms.preprocessing import DisparateImpactRemover
-
-# ── Load your dataset ────────────────────────────────────────────
-df = pd.read_csv("your_dataset.csv")
-
-PROTECTED_COL = "{protected}"
-LABEL_COL     = "{label}"
-REPAIR_LEVEL  = 0.8   # 0.0 = no repair, 1.0 = full repair
-
-# ── Encode string columns to numeric if needed ───────────────────
-for col in df.select_dtypes(include=["object", "category"]).columns:
-    df[col] = df[col].astype("category").cat.codes
-
-# ── Build AIF360 dataset ─────────────────────────────────────────
-dataset = BinaryLabelDataset(
-    df=df,
-    label_names=[LABEL_COL],
-    protected_attribute_names=[PROTECTED_COL],
-    favorable_label=1,
-    unfavorable_label=0,
-)
-
-# ── Apply Disparate Impact Remover ───────────────────────────────
-dir_model   = DisparateImpactRemover(repair_level=REPAIR_LEVEL, sensitive_attribute=PROTECTED_COL)
-dir_dataset = dir_model.fit_transform(dataset)
-
-df_repaired, _ = dir_dataset.convert_to_dataframe()
-
-# ── Save result ──────────────────────────────────────────────────
-df_repaired.to_csv("repaired_dataset.csv", index=False)
-print("\\nDone! Repaired dataset saved to: repaired_dataset.csv")
-print(f"Repair level used: {{REPAIR_LEVEL}}")
-print(f"Rows: {{len(df_repaired)}}")
-'''
-
-    return PlainTextResponse(content=code, media_type="text/plain")
+    return MitigateResponse(
+        before=before_metrics,
+        after=after_metrics,
+        status="complete",
+    )

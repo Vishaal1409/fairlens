@@ -1,257 +1,401 @@
+import logging
 import pandas as pd
-import numpy as np
 import shap
-import lime
-import lime.lime_tabular
+import numpy as np
 from sklearn.ensemble import RandomForestClassifier
-
 from aif360.datasets import BinaryLabelDataset
-from aif360.metrics import BinaryLabelDatasetMetric
-from aif360.algorithms.preprocessing import Reweighing, DisparateImpactRemover
+from aif360.algorithms.preprocessing import Reweighing
+
+# ---------------------------------------------------------------------------
+# Logger — all progress and errors flow through this
+# ---------------------------------------------------------------------------
+logger = logging.getLogger(__name__)
 
 
-# ─────────────────────────────────────────────
-# Metric Labels
-# ─────────────────────────────────────────────
-METRIC_LABELS = {
-    "demographic_parity_difference": {"label": "Demographic Parity", "ideal": "0"},
-    "disparate_impact_ratio":        {"label": "Disparate Impact",    "ideal": "1"},
-    "statistical_parity_difference": {"label": "Statistical Parity",  "ideal": "0"},
-    "consistency_score":             {"label": "Consistency",         "ideal": "1"},
-    "base_rate":                     {"label": "Base Rate",           "ideal": "context"},
-}
-
-# Minimum rows needed to run any analysis
-MIN_ROWS = 10
-
-
-# ─────────────────────────────────────────────
-# Helper: Validate inputs early
-# ─────────────────────────────────────────────
-def _validate_inputs(df: pd.DataFrame, protected_col: str, label_col: str, predicted_col: str):
+def _validate_columns(df: pd.DataFrame, protected_col: str, label_col: str, predicted_col: str) -> None:
     """
-    Raise a clear ValueError if anything is wrong before we start computing.
-    Covers: missing columns, too few rows, wrong dtypes in label/predicted.
+    Raises a clear ValueError if any required column is missing from the DataFrame.
     """
-    missing = [c for c in [protected_col, label_col, predicted_col] if c not in df.columns]
+    required = {
+        "protected_col": protected_col,
+        "label_col": label_col,
+        "predicted_col": predicted_col,
+    }
+    missing = {name: col for name, col in required.items() if col not in df.columns}
     if missing:
-        raise ValueError(f"Missing columns in dataset: {missing}. Available: {df.columns.tolist()}")
-
-    if len(df) < MIN_ROWS:
+        available = df.columns.tolist()
+        details = ", ".join(f"'{col}' (passed as {name})" for name, col in missing.items())
         raise ValueError(
-            f"Dataset too small: {len(df)} rows. Minimum required is {MIN_ROWS} rows for reliable analysis."
+            f"Missing required columns: {details}. "
+            f"Available columns in dataset: {available}"
         )
 
-    for col in [label_col, predicted_col]:
-        unique_vals = df[col].dropna().unique()
-        if len(unique_vals) < 2:
-            raise ValueError(
-                f"Column '{col}' must have at least 2 unique values for fairness analysis. "
-                f"Found: {unique_vals.tolist()}"
+
+def _check_binary_labels(df: pd.DataFrame, label_col: str, predicted_col: str) -> None:
+    """
+    Warns if label or prediction columns contain unexpected values beyond 0/1.
+    """
+    for col_name, col in [("label_col", label_col), ("predicted_col", predicted_col)]:
+        unique_vals = df[col].unique().tolist()
+        if not set(unique_vals).issubset({0, 1}):
+            logger.warning(
+                "Column '%s' (%s) contains non-binary values: %s. "
+                "Fairness metrics assume 0/1 encoding. Results may be unreliable.",
+                col, col_name, unique_vals
             )
 
 
-# ─────────────────────────────────────────────
-# Helper: Build AIF360 dataset
-# ─────────────────────────────────────────────
-def _build_dataset(df, protected_col, label_col):
-    return BinaryLabelDataset(
-        df=df,
-        label_names=[label_col],
-        protected_attribute_names=[protected_col]
+def analyze(df: pd.DataFrame, protected_col: str, label_col: str, predicted_col: str) -> dict:
+    """
+    Runs fairness metrics on a DataFrame.
+
+    Returns a dict of metric_name -> score (float between 0 and 1).
+    Higher scores = fairer model.
+
+    Also attempts:
+    - SHAP feature importance (requires numeric feature columns)
+    - AIF360 Reweighing mitigation (returns before/after scores)
+
+    Args:
+        df:            Input DataFrame with labels, predictions, and protected attribute.
+        protected_col: Column name for the protected/sensitive attribute (e.g. 'gender').
+        label_col:     Column name for the ground truth label (0 or 1).
+        predicted_col: Column name for the model's predictions (0 or 1).
+
+    Raises:
+        ValueError: If required columns are missing or the DataFrame is empty.
+    """
+    logger.info(
+        "Starting fairness analysis | rows=%d, protected='%s', label='%s', predicted='%s'",
+        len(df), protected_col, label_col, predicted_col
     )
 
+    # --- Guard: empty dataset ---
+    if df.empty:
+        raise ValueError(
+            "The uploaded dataset is empty. "
+            "Please upload a CSV with at least one row of data."
+        )
 
-# ─────────────────────────────────────────────
-# AIF360 Metrics
-# ─────────────────────────────────────────────
-def compute_aif360_metrics(dataset, privileged_groups, unprivileged_groups):
-    metric = BinaryLabelDatasetMetric(
-        dataset,
-        privileged_groups=privileged_groups,
-        unprivileged_groups=unprivileged_groups
-    )
-    return {
-        "demographic_parity_difference": round(float(metric.mean_difference()), 4),
-        "disparate_impact_ratio":        round(float(metric.disparate_impact()), 4),
-        "statistical_parity_difference": round(float(metric.statistical_parity_difference()), 4),
-        "consistency_score":             round(float(metric.consistency()[0]), 4),
-        "base_rate":                     round(float(metric.base_rate()), 4),
-    }
+    # --- Guard: missing columns ---
+    _validate_columns(df, protected_col, label_col, predicted_col)
 
-
-# ─────────────────────────────────────────────
-# MAIN ANALYZE FUNCTION
-# ─────────────────────────────────────────────
-def analyze(df: pd.DataFrame, protected_col: str, label_col: str, predicted_col: str):
-
-    # ── 0. Validate inputs before doing anything ──────────────
-    _validate_inputs(df, protected_col, label_col, predicted_col)
+    # --- Guard: binary label check ---
+    _check_binary_labels(df, label_col, predicted_col)
 
     results = {}
 
-    # ── 1. Convert protected column if needed ─────────────────
-    df_processed = df.copy()
-    if not pd.api.types.is_numeric_dtype(df_processed[protected_col]):
-        unique_vals = df_processed[protected_col].astype(str).unique()
-        if len(unique_vals) < 2:
-            raise ValueError(
-                f"Protected column '{protected_col}' must have at least 2 unique groups. "
-                f"Found: {unique_vals.tolist()}"
-            )
-        df_processed[protected_col] = df_processed[protected_col].astype(str).map(
-            {unique_vals[0]: 1, unique_vals[1]: 0}
-        ).astype(int)
+    # ---------------------------------------------------------------------------
+    # Auto-detect other protected columns (informational only — logged, not used)
+    # ---------------------------------------------------------------------------
+    KNOWN_PROTECTED = ["gender", "race", "age", "religion", "nationality", "disability"]
+    detected_protected = [
+        col for col in df.columns
+        if any(p in col.lower() for p in KNOWN_PROTECTED) and col != protected_col
+    ]
+    if detected_protected:
+        logger.info(
+            "Other potentially sensitive columns detected (not used in analysis): %s",
+            detected_protected
+        )
 
-    # ── 2. Custom Fairness Metrics ────────────────────────────
-    groups = df_processed[protected_col].unique()
+    # ---------------------------------------------------------------------------
+    # Compute positive prediction rates per group
+    # ---------------------------------------------------------------------------
+    logger.info("Computing positive prediction rates per group for '%s'...", protected_col)
+    groups = df[protected_col].unique()
 
-    positive_rates = {
-        g: (df_processed[df_processed[protected_col] == g][predicted_col] == 1).mean()
-        for g in groups
-    }
+    if len(groups) < 2:
+        raise ValueError(
+            f"Protected column '{protected_col}' must have at least 2 unique groups "
+            f"to compute fairness metrics. Found only: {groups.tolist()}"
+        )
+
+    positive_rates = {}
+    for group in groups:
+        group_df = df[df[protected_col] == group]
+        if len(group_df) == 0:
+            logger.warning("Group '%s' in column '%s' has 0 rows — skipping.", group, protected_col)
+            continue
+        positive_rates[group] = (group_df[predicted_col] == 1).mean()
+        logger.debug("  Group '%s': positive rate = %.4f", group, positive_rates[group])
 
     rates = list(positive_rates.values())
-    max_rate = max(rates) if rates else 0
-    results["demographic_parity"] = round(min(rates) / max_rate, 4) if max_rate else 1.0
-    results["disparate_impact"]   = results["demographic_parity"]
 
-    # Equal Opportunity
-    tpr = {}
-    for g in groups:
-        grp        = df_processed[df_processed[protected_col] == g]
-        actual_pos = grp[grp[label_col] == 1]
-        tpr[g]     = (actual_pos[predicted_col] == 1).mean() if len(actual_pos) else 0.0
+    # ---------------------------------------------------------------------------
+    # Metric 1: Demographic Parity
+    # ---------------------------------------------------------------------------
+    logger.info("Computing Demographic Parity...")
+    if max(rates) == 0:
+        logger.warning(
+            "All groups have a 0%% positive prediction rate. "
+            "Demographic Parity is set to 1.0 but model may never predict positive outcomes."
+        )
+        demographic_parity_score = 1.0
+    else:
+        demographic_parity_score = round(min(rates) / max(rates), 4)
+    results["demographic_parity"] = demographic_parity_score
+    logger.info("  Demographic Parity = %.4f", demographic_parity_score)
 
-    tpr_vals = list(tpr.values())
-    max_tpr  = max(tpr_vals) if tpr_vals else 0
-    results["equal_opportunity"] = round(min(tpr_vals) / max_tpr, 4) if max_tpr else 1.0
+    # ---------------------------------------------------------------------------
+    # Metric 2: Disparate Impact
+    # ---------------------------------------------------------------------------
+    logger.info("Computing Disparate Impact...")
+    di_score = round(min(rates) / max(rates), 4) if max(rates) != 0 else 1.0
+    results["disparate_impact"] = di_score
+    logger.info("  Disparate Impact = %.4f (threshold for fairness: >= 0.8)", di_score)
+    if di_score < 0.8:
+        logger.warning(
+            "Disparate Impact (%.4f) is below the 80%% rule threshold. "
+            "This model may be considered legally discriminatory in some jurisdictions.",
+            di_score
+        )
 
-    # Calibration / Predictive Parity
-    ppv = {}
-    for g in groups:
-        grp      = df_processed[df_processed[protected_col] == g]
-        pred_pos = grp[grp[predicted_col] == 1]
-        ppv[g]   = (pred_pos[label_col] == 1).mean() if len(pred_pos) else 1.0
-
-    ppv_vals = list(ppv.values())
-    max_ppv  = max(ppv_vals) if ppv_vals else 0
-    results["calibration"]       = round(min(ppv_vals) / max_ppv, 4) if max_ppv else 1.0
-    results["predictive_parity"] = results["calibration"]
-
-    # ── 3. Feature columns for ML explainers ─────────────────
-    feature_cols = [
-        c for c in df_processed.columns
-        if c not in [label_col, predicted_col, protected_col]
-        and df_processed[c].dtype in [int, float, np.int64, np.float64]
-    ]
-
-    # ── 4. SHAP Explainability ────────────────────────────────
-    try:
-        if len(feature_cols) == 0:
-            results["shap_values"] = {}
-        elif len(df_processed) < MIN_ROWS:
-            results["shap_values"] = {"warning": "Too few rows for SHAP analysis."}
+    # ---------------------------------------------------------------------------
+    # Metric 3: Equal Opportunity
+    # ---------------------------------------------------------------------------
+    logger.info("Computing Equal Opportunity (True Positive Rate parity)...")
+    tpr_by_group = {}
+    for group in groups:
+        group_df = df[df[protected_col] == group]
+        actual_positive = group_df[group_df[label_col] == 1]
+        if len(actual_positive) == 0:
+            logger.warning(
+                "Group '%s' has no actual positive samples in '%s'. "
+                "Equal Opportunity TPR set to 0.0 for this group.",
+                group, label_col
+            )
+            tpr_by_group[group] = 0.0
         else:
-            X = df_processed[feature_cols].fillna(0)
-            y = df_processed[label_col]
+            tpr = (actual_positive[predicted_col] == 1).mean()
+            tpr_by_group[group] = tpr
+        logger.debug("  Group '%s': TPR = %.4f", group, tpr_by_group[group])
 
-            model = RandomForestClassifier(n_estimators=50, max_depth=4, random_state=42)
+    tpr_values = list(tpr_by_group.values())
+    eo_score = round(min(tpr_values) / max(tpr_values), 4) if max(tpr_values) != 0 else 1.0
+    results["equal_opportunity"] = eo_score
+    logger.info("  Equal Opportunity = %.4f", eo_score)
+
+    # ---------------------------------------------------------------------------
+    # Metric 4: Calibration (Precision equality across groups)
+    # ---------------------------------------------------------------------------
+    logger.info("Computing Calibration (Precision parity)...")
+    calibration_by_group = {}
+    for group in groups:
+        group_df = df[df[protected_col] == group]
+        predicted_positive = group_df[group_df[predicted_col] == 1]
+        if len(predicted_positive) == 0:
+            logger.warning(
+                "Group '%s' has no predicted positive samples. "
+                "Calibration set to 1.0 for this group (vacuously fair).",
+                group
+            )
+            calibration_by_group[group] = 1.0
+        else:
+            precision = (predicted_positive[label_col] == 1).mean()
+            calibration_by_group[group] = precision
+        logger.debug("  Group '%s': precision = %.4f", group, calibration_by_group[group])
+
+    cal_values = list(calibration_by_group.values())
+    cal_score = round(min(cal_values) / max(cal_values), 4) if max(cal_values) != 0 else 1.0
+    results["calibration"] = cal_score
+    logger.info("  Calibration = %.4f", cal_score)
+
+    # ---------------------------------------------------------------------------
+    # Metric 5: Predictive Parity (PPV equality across groups)
+    # ---------------------------------------------------------------------------
+    logger.info("Computing Predictive Parity (PPV parity)...")
+    ppv_by_group = {}
+    for group in groups:
+        group_df = df[df[protected_col] == group]
+        predicted_pos = group_df[group_df[predicted_col] == 1]
+        if len(predicted_pos) == 0:
+            ppv_by_group[group] = 1.0
+        else:
+            ppv = (predicted_pos[label_col] == 1).mean()
+            ppv_by_group[group] = ppv
+        logger.debug("  Group '%s': PPV = %.4f", group, ppv_by_group[group])
+
+    ppv_values = list(ppv_by_group.values())
+    pp_score = round(min(ppv_values) / max(ppv_values), 4) if max(ppv_values) != 0 else 1.0
+    results["predictive_parity"] = pp_score
+    logger.info("  Predictive Parity = %.4f", pp_score)
+
+    # ---------------------------------------------------------------------------
+    # SHAP Feature Importance
+    # ---------------------------------------------------------------------------
+    logger.info("Starting SHAP feature importance computation...")
+    try:
+        feature_cols = [
+            col for col in df.columns
+            if col not in [label_col, predicted_col, protected_col]
+            and df[col].dtype in [np.float64, np.int64, float, int]
+        ]
+
+        if len(feature_cols) == 0:
+            logger.warning(
+                "No numeric feature columns found after excluding '%s', '%s', '%s'. "
+                "SHAP analysis skipped. Ensure your CSV has numeric feature columns.",
+                label_col, predicted_col, protected_col
+            )
+            results["shap_values"] = {}
+        else:
+            logger.info("  Training surrogate RandomForest on %d features...", len(feature_cols))
+            X = df[feature_cols].fillna(0)
+            y = df[label_col]
+
+            model = RandomForestClassifier(n_estimators=50, random_state=42, max_depth=4)
             model.fit(X, y)
+            logger.info("  RandomForest trained. Computing SHAP values...")
 
-            explainer   = shap.TreeExplainer(model)
+            explainer = shap.TreeExplainer(model)
             shap_values = explainer.shap_values(X)
 
-            shap_array = np.array(shap_values[1] if isinstance(shap_values, list) else shap_values)
+            if isinstance(shap_values, list):
+                shap_array = np.array(shap_values[1])
+            elif hasattr(shap_values, 'values'):
+                shap_array = np.array(shap_values.values)
+            else:
+                shap_array = np.array(shap_values)
+
             if shap_array.ndim == 3:
                 shap_array = shap_array[:, :, 1]
 
-            importance = np.abs(shap_array).mean(axis=0)
-            results["shap_values"] = dict(
-                sorted(zip(feature_cols, importance.tolist()), key=lambda x: x[1], reverse=True)[:10]
+            mean_shap = np.abs(shap_array).mean(axis=0)
+            shap_dict = dict(zip(feature_cols, mean_shap.tolist()))
+            top_shap = dict(
+                sorted(shap_dict.items(), key=lambda x: x[1], reverse=True)[:10]
             )
-
-            # ── 5. LIME Explainability ────────────────────────
-            try:
-                # LIME needs at least 2 rows to sample from
-                if len(X) < 2:
-                    results["lime_values"] = {"warning": "Too few rows for LIME analysis."}
-                else:
-                    lime_explainer = lime.lime_tabular.LimeTabularExplainer(
-                        training_data  = X.values,
-                        feature_names  = feature_cols,
-                        class_names    = ["Negative", "Positive"],
-                        mode           = "classification",
-                        random_state   = 42
-                    )
-
-                    # Explain the first instance as a representative example
-                    instance     = X.iloc[0].values
-                    explanation  = lime_explainer.explain_instance(
-                        instance,
-                        model.predict_proba,
-                        num_features = min(10, len(feature_cols))
-                    )
-
-                    # Convert to a clean dict: feature -> weight
-                    lime_dict = {feat: round(float(weight), 6) for feat, weight in explanation.as_list()}
-                    results["lime_values"] = lime_dict
-
-            except Exception as lime_err:
-                results["lime_values"] = {"error": str(lime_err)}
+            results["shap_values"] = {k: round(float(v), 4) for k, v in top_shap.items()}
+            logger.info("  SHAP computation complete. Top feature: '%s'", next(iter(top_shap)))
 
     except Exception as e:
+        logger.error(
+            "SHAP computation failed: %s. "
+            "This does not affect the fairness metrics above. "
+            "Common causes: insufficient data, non-numeric features, or memory limits.",
+            str(e),
+            exc_info=True
+        )
         results["shap_values"] = {"error": str(e)}
-        results["lime_values"] = {}
 
-    # ── 6. AIF360 Dataset ─────────────────────────────────────
-    df_numeric = df_processed.select_dtypes(include=[np.number])
+    # ---------------------------------------------------------------------------
+    # AIF360 Reweighing Mitigation
+    # ---------------------------------------------------------------------------
+    logger.info("Starting AIF360 Reweighing mitigation...")
+    try:
+        before = {
+            "demographic_parity": results["demographic_parity"],
+            "disparate_impact":   results["disparate_impact"],
+            "equal_opportunity":  results["equal_opportunity"],
+            "calibration":        results["calibration"],
+            "predictive_parity":  results["predictive_parity"],
+        }
 
-    privileged_groups   = [{protected_col: 1}]
-    unprivileged_groups = [{protected_col: 0}]
+        df_aif = df.copy()
 
-    dataset    = _build_dataset(df_numeric, protected_col, label_col)
-    before_aif = compute_aif360_metrics(dataset, privileged_groups, unprivileged_groups)
+        # Encode protected column to numeric if categorical
+        if not pd.api.types.is_numeric_dtype(df_aif[protected_col]):
+            unique_vals = df_aif[protected_col].astype(str).unique()
+            if len(unique_vals) != 2:
+                raise ValueError(
+                    f"AIF360 Reweighing requires exactly 2 groups in '{protected_col}'. "
+                    f"Found {len(unique_vals)}: {unique_vals.tolist()}. "
+                    f"Consider grouping minority groups before uploading."
+                )
+            logger.info(
+                "  Encoding protected column '%s': '%s'→1, '%s'→0",
+                protected_col, unique_vals[0], unique_vals[1]
+            )
+            df_aif[protected_col] = df_aif[protected_col].astype(str).map(
+                {unique_vals[0]: 1, unique_vals[1]: 0}
+            ).astype(int)
 
-    # ── 7. Reweighing ─────────────────────────────────────────
-    rw         = Reweighing(privileged_groups=privileged_groups, unprivileged_groups=unprivileged_groups)
-    rw.fit(dataset)
-    rw_dataset = rw.transform(dataset)
-    after_rw   = compute_aif360_metrics(rw_dataset, privileged_groups, unprivileged_groups)
+        df_aif = df_aif.select_dtypes(include=[np.number])
 
-    # ── 8. Disparate Impact Remover ───────────────────────────
-    dir_model   = DisparateImpactRemover(repair_level=1.0, sensitive_attribute=protected_col)
-    dir_dataset = dir_model.fit_transform(dataset)
-    after_dir   = compute_aif360_metrics(dir_dataset, privileged_groups, unprivileged_groups)
+        missing_cols = [c for c in [label_col, predicted_col, protected_col] if c not in df_aif.columns]
+        if missing_cols:
+            raise ValueError(
+                f"Columns {missing_cols} could not be kept as numeric after encoding. "
+                f"Ensure label and prediction columns contain only 0/1 integer values."
+            )
 
-    # ── 9. Final Output ───────────────────────────────────────
-    return {
-        "protected_col": protected_col,
-        "status":        "complete",
+        privileged_groups   = [{protected_col: 1}]
+        unprivileged_groups = [{protected_col: 0}]
 
-        # Custom metrics
-        "metrics": results,
+        logger.info("  Building AIF360 BinaryLabelDataset...")
+        aif_dataset = BinaryLabelDataset(
+            df=df_aif,
+            label_names=[label_col],
+            protected_attribute_names=[protected_col]
+        )
 
-        # Enriched metrics with labels and explanations
-        "metrics_enriched": {
-            k: {
-                "value":       v,
-                "label":       METRIC_LABELS.get(k, {}).get("label", k),
-                "explanation": METRIC_LABELS.get(k, {}).get("explanation", ""),
-                "ideal":       METRIC_LABELS.get(k, {}).get("ideal", ""),
-            }
-            for k, v in before_aif.items()
-        },
+        logger.info("  Fitting Reweighing transform...")
+        rw = Reweighing(
+            unprivileged_groups=unprivileged_groups,
+            privileged_groups=privileged_groups
+        )
+        rw.fit(aif_dataset)
+        reweighed_dataset = rw.transform(aif_dataset)
 
-        # Mitigation before/after
-        "mitigation": {
-            "reweighing": {
-                "before": before_aif,
-                "after":  after_rw,
-            },
-            "disparate_impact_remover": {
-                "before": before_aif,
-                "after":  after_dir,
-            },
-        },
-    }
+        df_reweighed, _ = reweighed_dataset.convert_to_dataframe()
+        logger.info("  Reweighing complete. Re-computing metrics on mitigated dataset...")
+
+        rw_groups = df_reweighed[protected_col].unique()
+        rw_positive_rates = {}
+        for group in rw_groups:
+            group_df = df_reweighed[df_reweighed[protected_col] == group]
+            rw_positive_rates[group] = (group_df[predicted_col] == 1).mean()
+
+        rw_rates = list(rw_positive_rates.values())
+        after_dp = round(min(rw_rates) / max(rw_rates), 4) if max(rw_rates) != 0 else 1.0
+        after_di = after_dp
+
+        rw_tpr = {}
+        for group in rw_groups:
+            group_df = df_reweighed[df_reweighed[protected_col] == group]
+            actual_pos = group_df[group_df[label_col] == 1]
+            if len(actual_pos) == 0:
+                rw_tpr[group] = 0.0
+            else:
+                rw_tpr[group] = (actual_pos[predicted_col] == 1).mean()
+
+        rw_tpr_vals = list(rw_tpr.values())
+        after_eo = round(min(rw_tpr_vals) / max(rw_tpr_vals), 4) if max(rw_tpr_vals) != 0 else 1.0
+
+        after = {
+            "demographic_parity": after_dp,
+            "disparate_impact":   after_di,
+            "equal_opportunity":  after_eo,
+            "calibration":        results["calibration"],
+            "predictive_parity":  results["predictive_parity"],
+        }
+
+        logger.info(
+            "  Mitigation summary — Demographic Parity: %.4f → %.4f | "
+            "Disparate Impact: %.4f → %.4f | Equal Opportunity: %.4f → %.4f",
+            before["demographic_parity"], after["demographic_parity"],
+            before["disparate_impact"],   after["disparate_impact"],
+            before["equal_opportunity"],  after["equal_opportunity"],
+        )
+
+        results["mitigation"] = {
+            "method": "reweighing",
+            "before": before,
+            "after":  after,
+        }
+
+    except ValueError as e:
+        logger.error("Mitigation setup failed (invalid input): %s", str(e))
+        results["mitigation"] = {"error": str(e)}
+    except Exception as e:
+        logger.error(
+            "AIF360 Reweighing failed unexpectedly: %s. "
+            "Common causes on Apple Silicon: install aif360 with --no-deps and add dependencies manually.",
+            str(e),
+            exc_info=True
+        )
+        results["mitigation"] = {"error": str(e)}
+
+    logger.info("Fairness analysis complete. Metrics computed: %s", list(results.keys()))
+    return results
