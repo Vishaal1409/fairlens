@@ -1,4 +1,4 @@
-version: "3.11"
+version: "3.8"
 
 services:
   backend:
@@ -8,4 +8,8 @@ services:
     container_name: fairlens-backend
     ports:
       - "8000:8000"
+    environment:
+      - DEBUG=false
+    volumes:
+      - ./uploads:/app/uploads
     restart: unless-stopped

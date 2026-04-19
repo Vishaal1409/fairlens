@@ -1,0 +1,37 @@
+name: Backend Tests (Robot Framework)
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r tests/requirements-test.txt
+
+      - name: Generate large fixtures
+        run: python tests/fixtures/generate_fixtures.py --output-dir tests/fixtures/ --sizes 51 100
+
+      - name: Run Robot Framework suites
+        run: robot --outputdir results tests/
+
+      - name: Upload results on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: robot-test-results
+          path: results/

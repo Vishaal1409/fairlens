@@ -1,125 +1,68 @@
-# FairLens — Daily Changelog
+# Changelog
 
----
+All notable changes to this project will be documented in this file.
 
-## 2026-04-15 (Arun)
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-### fix: /mitigate endpoint robustness & test suites
-**Commits:** `bf21e21`, `1547836` → `feat/arun`
+## [Unreleased]
 
-#### Changed
-- `backend/api/routes.py` — added robustness to `/mitigate` endpoint:
-  - Added automatic categorical-to-numeric encoding (for `object` & `category` dtypes) before supplying data to AIF360 `BinaryLabelDataset` to avoid numerical parsing exceptions.
-  - Added safety checks for `np.nan` and zero-sum scenarios on Reweighing `instance_weights` before pandas dataframe resampling.
-- `backend/tests/` — reorganized internal test files:
-  - Moved end-to-end testing script `test_fastapi.py` into the `backend/tests/` folder.
-  - Cleaned up broken imports inside `test_analyzer.py`.
-- Repulled and synced `origin/main` changes before pushing to `feat/arun`.
+### Added
+- Consolidated all test files, fixtures, datasets, and Postman collection under `tests/`
+- Download report button for exporting PDF/CSV summaries
+- Dataset comparison view for side-by-side bias scores
+- One-click mitigation code export functionality
+- Demo video recording demonstrating full platform workflow
+- Project presentation deck covering vision and architecture
+- Deployment to Render/Railway for a live public URL
 
----
+## [0.2.1] — 2026-04-18
 
+### Added
+- Created `docker_test.sh` validating local container build architecture and native endpoint healthchecks
+- Added `generate_fixtures.py` systematically mocking 51MB+ synthetic CSV datasets for dynamic load limit testing
+- Appended `Validation & Rejection Tests` to `fairlens_postman.json` enabling programmatic strict assertion checks natively within Postman environments
+- Formatted `README.md` and isolated `CHANGELOG.md` enforcing formal semantic versioning principles and operational setups
 
-## 2026-04-14 (Arun)
+## [0.2.0] — 2026-04-17
 
-### feat: add /mitigate endpoint with reweighing
-**Commit:** `4b31811` → `feat/arun`
+### Added
+- Created POST `/explain` endpoint returning SHAP feature contributions as JSON
+- Created POST `/mitigate` endpoint applying AIF360 Reweighing and returning before/after metrics
+- Created GET `/health` endpoint returning system status, version, timestamp, and dependency statuses
+- Implemented 5 additional bias metrics: Calibration, Predictive Parity, Equalized Odds, Treatment Equality, and Disparate Impact Remover
+- Integrated SHAP and LIME explainability frameworks into the core ML pipeline
+- Added automated protected attribute detection capabilities
+- Added support for `.pkl` and `.joblib` model file uploads via the `/upload` endpoint
+- Implemented structured JSON error responses (error, code, message, detail fields) with specific codes
+- Implemented HTTP 400, 422, 404, and 500 error handling across all backend endpoints
+- Added native Python logging across the backend ML pipeline
+- Implemented robust Pydantic schemas for all request and response models
+- Containerized the backend using Docker with a multi-stage build, non-root user execution, and active health checks
+- Added `docker-compose.yml` for simplified one-command local startup
+- Added automated Robot Framework test suites (`upload_validation.robot`, `bulk_large_file.robot`, `error_payload_shape.robot`)
+- Added shared test keywords mapping through `fairlens_keywords.resource`
+- Added GitHub Actions CI workflow (`backend-tests.yml`) tracking pipeline integrity
+- Added SHAP bar chart visualizations to the frontend dashboard
+- Added BiasHeatmap component highlighting metric scores across demographic groups
+- Added Before/After mitigation comparison charts to the frontend
+- Added plain-language explanation panels for individual statistical metrics
+- Added Bias Scorecard page featuring a Mitigation tab and "Apply Fix" button
+- Added loading spinners and empty states resolving asynchronous component latency
+- Distributed `fairlens_postman.json` collection bridging backend/frontend testing
 
-#### Added
-- `POST /mitigate` — applies AIF360 Reweighing on an uploaded dataset to mitigate bias
-  - Computes and returns fairness metrics before and after mitigation using `analyze()`
-  - Automatically identifies privileged and unprivileged groups based on positive condition rates
-  - Returns structured `MitigateResponse` with `before` and `after` metrics dictionaries
-  - Handles missing files (404) and missing columns (422) securely
+## [0.1.0] — 2026-04-11
 
-#### Changed
-- `backend/requirements.txt` — added `aif360`
-- Extracted and relocated test scripts to `backend/tests/` directory (`test_mitigate.py`, `test_analyzer.py`)
+### Added
+- Initialized GitHub repository and set core branch strategy (`feat/vishaal`, `feat/arun`, `feat/shruthika`, `feat/ishitha`)
+- Scaffolded FastAPI backend architecture alongside Uvicorn infrastructure
+- Created POST `/upload` endpoint accepting CSV payloads and returning column previews
+- Created POST `/analyze` endpoint computing initial bias metrics and returning JSON formatting
+- Implemented baseline bias metrics including Demographic Parity, Equal Opportunity, and Disparate Impact
+- Scaffolded React frontend using Vite and TailwindCSS
+- Connected React file upload component to the backend API via axios
+- Implemented MetricCard components visualizing live analytical scoring
 
----
-
-## 2026-04-13 (Arun)
-
-### feat: /explain endpoint + model file upload + infer-fairness
-**Commit:** `84e09d9` → `feat/arun`
-
-#### Added
-- `POST /explain` — SHAP feature importances for uploaded CSV + model
-  - Returns top-10 features by mean absolute SHAP value
-  - Async: SHAP runs in `ThreadPoolExecutor` (non-blocking event loop)
-  - `shap.sample(X, 1000)` cap prevents OOM on large CSVs
-  - `hasattr(model, "feature_names_in_")` guard handles non-sklearn models
-  - `model_id` required (KernelExplainer surrogate deferred to v2)
-  - 404 on missing file/model, 422 on column/shape mismatch, 500 on SHAP error
-- `POST /infer-fairness` — runs `model.predict()` on uploaded CSV then calls `analyze()`
-  - Collision-safe prediction column (`_fairlens_pred_`)
-  - 100k row cap with server-side warning on truncation
-  - Descriptive 422 on shape mismatch with expected feature names
-
-#### Changed
-- `POST /upload-model` response now includes `"status": "uploaded"` (additive)
-- Added Pydantic response models: `ModelUploadResponse`, `ExplainRequest`,
-  `ExplainResponse`, `InferFairnessRequest`, `InferFairnessResponse`
-- `requirements.txt` — added `shap>=0.45.0` (installed: 0.49.1)
-- `API_CONTRACT.md` — documented `/explain` and `/infer-fairness` with
-  request/response shapes, error codes, and curl examples
-
-#### Internal
-- `_build_feature_matrix()` — shared helper, drops label/sensitive cols,
-  aligns to `feature_names_in_` when available
-- `_compute_shap()` — blocking SHAP helper, always called via `run_in_executor`
-
----
-
-### chore: pull Vishaal's updated analyzer
-**Commit:** `e205a92` → `feat/arun`
-
-#### Pulled from `origin/feat/vishaal` (commit `7d81488`)
-- `backend/ml/analyzer.py` — two new fairness metrics added by Vishaal:
-  - `calibration` — precision equality across protected groups
-  - `predictive_parity` — positive predictive value (PPV) equality
-  - Auto-detection of protected columns via `KNOWN_PROTECTED` list
-  - `analyze()` function signature unchanged — no routes code needed to change
-- `backend/ml/test_analyzer.py` — Vishaal's manual smoke test (new file)
-
----
-
-## 2026-04-10 (Arun)
-
-### feat: model upload + health endpoint + error handling
-**Commit:** `03a2061` → `feat/arun`
-
-#### Added
-- `POST /upload-model` — accepts `.pkl` / `.joblib`, stores model by `model_id`
-- `GET /health` — returns `{ "status": "ok", "version": "1.0.0" }`
-
-#### Changed
-- `POST /analyze` — added column validation (422 with available column list)
-
----
-
-## 2026-04-09 (Arun)
-
-### feat: /analyze endpoint wired to ML analyzer
-**Commit:** `f91815e` → `feat/arun`
-
-#### Added
-- `POST /analyze` — calls Vishaal's `analyze()` for fairness metrics
-  - Validates `file_id`, `protected_col`, `label_col`, `predicted_col`
-  - Returns `demographic_parity`, `disparate_impact`, `equal_opportunity`
-
-#### Changed
-- `/upload` now stores DataFrame to `uploaded_files` dict for downstream use
-
----
-
-## 2026-04-08 (Arun)
-
-### feat: initial backend setup + /upload endpoint
-**Commits:** `7a20539` → `feat/arun`
-
-#### Added
-- FastAPI server (`main.py`) with CORS middleware
-- `POST /upload` — accepts CSV, returns `file_id`, `columns`, `preview`, `row_count`
-- `requirements.txt` — FastAPI, uvicorn, pandas, python-multipart, joblib, scikit-learn
-- `startup.md` — local and Docker setup instructions
-- `.gitignore` — standard Python + venv ignores
+[Unreleased]: https://github.com/Vishaal1409/fairlens/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Vishaal1409/fairlens/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/Vishaal1409/fairlens/releases/tag/v0.1.0
