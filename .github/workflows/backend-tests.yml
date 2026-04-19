@@ -21,7 +21,9 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install -r tests/requirements-test.txt
+        run: |
+          pip install -r backend/requirements.txt
+          pip install -r tests/requirements-test.txt
 
       - name: Generate large fixtures
         run: python tests/fixtures/generate_fixtures.py --output-dir tests/fixtures/ --sizes 51 100
