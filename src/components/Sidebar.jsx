@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 
 const navItems = [
   { label: "Upload", icon: "cloud_upload", path: "/" },
@@ -10,6 +10,8 @@ const navItems = [
 ];
 
 const Sidebar = () => {
+  const navigate = useNavigate();
+
   return (
     <aside className="w-64 h-screen fixed left-0 top-0 bg-[#121315] border-r border-white/5 flex flex-col py-6 px-4 z-50">
       <div className="mb-10 px-2">
@@ -43,7 +45,10 @@ const Sidebar = () => {
               <div className="h-full bg-gradient-to-r from-[#6b2fbf] to-[#d6baff] w-[40%]"></div>
            </div>
         </div>
-        <button className="premium-btn w-full py-3 rounded-xl text-white font-bold text-xs uppercase tracking-widest">
+        <button 
+          onClick={() => navigate('/')}
+          className="premium-btn w-full py-3 rounded-xl text-white font-bold text-xs uppercase tracking-widest"
+        >
           New Audit Session
         </button>
       </div>

@@ -68,13 +68,13 @@ const ResultsPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 p-8">
+        <div className="min-h-screen bg-[#121315] p-8 text-[#e3e2e3]">
             {/* Header Section */}
-            <div style={{ marginBottom: "1.5rem" }}>
-                <h1 style={{ fontSize: "22px", fontWeight: 500, color: "#2C2C2A" }}>
+            <div className="mb-6">
+                <h1 className="text-2xl font-medium text-white">
                     Results
                 </h1>
-                <p style={{ fontSize: "13px", color: "#888780", marginTop: "2px" }}>
+                <p className="text-[13px] text-[#888780] mt-0.5">
                     AI fairness audit report
                 </p>
             </div>
@@ -82,46 +82,22 @@ const ResultsPage = () => {
             <SummaryBanner metrics={metrics} />
 
             {/* Metric Cards Grid */}
-            <div style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-                gap: "15px",
-                marginBottom: "1.5rem"
-            }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 {Object.entries(metrics).map(([key, value]) => {
-                    const status = value >= 0.7 ? "good" : value >= 0.5 ? "warning" : "danger";
-                    const borderColor = status === "good" ? "#1D9E75" : status === "warning" ? "#EF9F27" : "#E24B4A";
-                    const bgColor = status === "good" ? "#EAFAF3" : status === "warning" ? "#FAEEDA" : "#FCEBEB";
-
                     return (
-                        <div key={key} style={{
-                            background: bgColor,
-                            border: `0.5px solid ${borderColor}`,
-                            borderRadius: "12px",
-                            padding: "1rem 1.25rem",
-                            display: "flex",
-                            flexDirection: "column",
-                            justifyContent: "space-between"
-                        }}>
+                        <div key={key} className="bg-[#1b1c1d] border border-white/5 rounded-xl p-5 flex flex-col justify-between shadow-xl shadow-black/20">
                             <div>
-                                <div style={{ fontSize: "11px", color: "#888780", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                                <div className="text-[11px] text-[#888780] mb-1.5 uppercase tracking-wider">
                                     {key.replace(/_/g, " ")}
                                 </div>
-                                <div style={{ fontSize: "26px", fontWeight: 500, color: "#2C2C2A" }}>
+                                <div className="text-[26px] font-medium text-white">
                                     {Math.round(value * 100)}%
                                 </div>
                             </div>
 
                             {/* Plain Language Explanation */}
-                            <div style={{
-                                marginTop: "12px",
-                                paddingTop: "8px",
-                                borderTop: `1px solid ${borderColor}44`,
-                                fontSize: "11px",
-                                color: "#444",
-                                lineHeight: "1.4"
-                            }}>
-                                <strong>What this means:</strong> {metricExplanations[key] || "Explanation coming soon."}
+                            <div className="mt-3 pt-2 border-t border-white/5 text-[11px] text-[#888780] leading-relaxed">
+                                <strong className="text-white">What this means:</strong> {metricExplanations[key] || "Explanation coming soon."}
                             </div>
                         </div>
                     );
@@ -131,43 +107,25 @@ const ResultsPage = () => {
             {/* Visualizations Section */}
             <SHAPChart shapValues={shapValues} />
 
-            <div style={{ marginTop: "2rem" }}>
-                <p style={{ fontSize: "11px", fontWeight: 500, color: "#888780", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "12px" }}>
+            <div className="mt-8">
+                <p className="text-[11px] font-medium text-[#888780] uppercase tracking-wider mb-3">
                     Bias heatmap
                 </p>
                 <BiasHeatmap metrics={metrics} />
             </div>
 
             {/* Mitigation Action Section */}
-            <div style={{
-                marginTop: "3rem",
-                padding: "2.5rem",
-                background: "#fff",
-                borderRadius: "16px",
-                border: "1px dashed #ccc",
-                textAlign: "center",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.03)"
-            }}>
+            <div className="mt-12 p-10 bg-[#1b1c1d] rounded-2xl border border-white/5 text-center shadow-xl shadow-black/20">
                 {!mitigatedData ? (
                     <>
-                        <h4 style={{ marginBottom: "12px", color: "#2C2C2A" }}>Detected bias in your model?</h4>
-                        <p style={{ fontSize: "14px", color: "#666", marginBottom: "20px" }}>
+                        <h4 className="mb-3 text-white text-lg font-medium">Detected bias in your model?</h4>
+                        <p className="text-sm text-[#888780] mb-5">
                             Our FairLens engine can suggest adjustments to rebalance your outcomes.
                         </p>
                         <button
                             onClick={handleMitigation}
                             disabled={loading}
-                            style={{
-                                padding: "12px 28px",
-                                backgroundColor: loading ? "#888" : "#2C2C2A",
-                                color: "white",
-                                borderRadius: "8px",
-                                border: "none",
-                                cursor: loading ? "not-allowed" : "pointer",
-                                fontSize: "14px",
-                                fontWeight: "600",
-                                transition: "all 0.2s"
-                            }}
+                            className={`px-7 py-3 rounded-xl font-semibold text-sm transition-all ${loading ? 'bg-[#2a2b2c] text-[#888780] cursor-not-allowed' : 'bg-[#6b2fbf] hover:bg-[#7c3aed] text-white shadow-lg shadow-[#6b2fbf]/20 cursor-pointer'}`}
                         >
                             {loading ? "Processing Mitigation..." : "✨ Apply Bias Mitigation"}
                         </button>
