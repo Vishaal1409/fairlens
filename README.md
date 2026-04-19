@@ -157,10 +157,10 @@ Follow strict standard commit message conventions natively:
 ## Team
 | Name | Role | Responsibility |
 |---|---|---|
-| **Vishaal** | Team Lead | Backend Developer | ML pipeline scope, statistical accuracy, GitHub management |
+| **Vishaal** | Team Lead & Backend Developer | ML pipeline scope, statistical accuracy, GitHub management |
 | **Arun** | Backend Developer | Python API architecture, Server deployment configurations, Docker, Automated Testing |
 | **Shruthika** | Frontend Developer | Translating endpoints into data visualizations and mapping chart components |
-| **Ishitha** | Frontend Developer | UI/UX Designer | Structural layout design schemas, UI styling, formal presentation materials |
+| **Ishitha** | UI/UX & Frontend Developer | Structural layout design schemas, UI styling, formal presentation materials |
 
 ## License
 MIT
