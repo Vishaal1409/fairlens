@@ -1,5 +1,5 @@
 *** Settings ***
-Resource    tests/resources/fairlens_keywords.resource
+Resource    resources/fairlens_keywords.resource
 Suite Setup    Create FairLens Session
 Test Tags    model    upload-model    infer-fairness
 
@@ -110,4 +110,4 @@ Upload CSV For Infer
     ${resp}=    POST On Session    fairlens    /upload
     ...    files=file=tests/fixtures/small_valid.csv
     Assert Success Upload Payload    ${resp}
-    [Return]    ${resp.json()}[file_id]
+    RETURN    ${resp.json()}[file_id]

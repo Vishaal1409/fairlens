@@ -1,5 +1,5 @@
 *** Settings ***
-Resource    tests/resources/fairlens_keywords.resource
+Resource    resources/fairlens_keywords.resource
 Suite Setup    Create FairLens Session
 Test Tags    upload    validation
 

@@ -3,6 +3,7 @@ Library    RequestsLibrary
 Library    JSONLibrary
 Library    Collections
 Library    OperatingSystem
+Library    String
 
 *** Variables ***
 ${BASE_URL}       http://localhost:8000
@@ -16,7 +17,7 @@ Create FairLens Session
 Assert Error Payload
     [Arguments]    ${response}    ${expected_code}    ${expected_status}=${400}
     [Documentation]  Central payload assertion — used by every error test case.
-                     Checks status, error flag, code, message, and detail shape.
+    ...              Checks status, error flag, code, message, and detail shape.
     Should Be Equal As Integers    ${response.status_code}    ${expected_status}
     ...    msg=Expected status ${expected_status}, got ${response.status_code}
     ${body}=    Set Variable    ${response.json()}
@@ -74,8 +75,14 @@ Generate In-Memory CSV
     ${bytes}=    Evaluate    ${size_mb} * 1024 * 1024
     ${path}=    Evaluate
     ...    __import__('tempfile').mktemp(suffix='.csv')
-    Run    python -c "\nimport csv, sys\npath = '${path}'\ntarget = ${bytes}\nrow = ['name','age','income'] + ['col'+str(i) for i in range(20)]\nwith open(path,'w',newline='') as f:\n    w = csv.writer(f)\n    w.writerow(row)\n    written = f.tell()\n    data = ','.join(['value']*23) + '\\n'\n    while written < target:\n        f.write(data)\n        written += len(data)\n"
-    [Return]    ${path}
+    ${cmd}=    Catenate    SEPARATOR=
+    ...    python3 -c "import csv;path='${path}';target=${bytes};
+    ...    row=['name','age','income']+['col'+str(i) for i in range(20)];
+    ...    f=open(path,'w',newline='');w=csv.writer(f);w.writerow(row);
+    ...    written=f.tell();data=','.join(['value']*23)+'\n';
+    ...    exec('while written<target:\n f.write(data)\n written+=len(data)');f.close()"
+    Run    ${cmd}
+    RETURN    ${path}
 
 Assert Analyze Response Shape
     [Arguments]    ${response}    ${expected_protected_col}
