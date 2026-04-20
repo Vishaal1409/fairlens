@@ -8,13 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Consolidated all test files, fixtures, datasets, and Postman collection under `tests/`
 - Download report button for exporting PDF/CSV summaries
 - Dataset comparison view for side-by-side bias scores
 - One-click mitigation code export functionality
 - Demo video recording demonstrating full platform workflow
 - Project presentation deck covering vision and architecture
-- Deployment to Render/Railway for a live public URL
+
+## [1.0.0] — 2026-04-20
+
+### Added
+- **Rate Limiting (slowapi):** Added `slowapi==0.1.9` to dependencies and wired `Limiter` middleware into `main.py`. Endpoint limits: `/upload` & `/upload-model` at 20/min, `/analyze` at 60/min, `/explain` & `/infer-fairness` at 10/min, `/mitigate` at 5/min, `/health` & `/` at 100/min. Returns `429 Too Many Requests` on abuse.
+- **Render Blueprint:** Created `render.yaml` Infrastructure-as-Code file for one-click Render deployment (Python 3.11, free tier, `/health` check path).
+- **Demo Prep:** Created `scripts/demo_curl.sh` with annotated cURL commands exercising every endpoint and demonstrating rate-limit 429 response.
+
+### Fixed
+- **Robot Framework CI (all 44 tests):** Fixed resource import paths in all 7 `.robot` files (`tests/resources/...` → `resources/...`). Fixed multi-line `[Documentation]` continuation syntax. Added `Library String` dependency. Refactored `Generate In-Memory CSV` keyword to use `Catenate`. Replaced deprecated `[Return]` with `RETURN` across all suites.
+
+### Changed
+- Bumped API version from `0.2.0` to `1.0.0` in `main.py`
+- Consolidated all test files, fixtures, datasets, and Postman collection under `tests/`
+- Deployment to Render for a live public URL
 
 ## [0.2.1] — 2026-04-18
 
