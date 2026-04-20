@@ -10,7 +10,7 @@ def generate_csv(size_mb, output_file):
     print(f"Generating {size_mb}MB dataset ({rows} rows)...")
     
     df = pd.DataFrame({
-        'timestamp': pd.date_range('2026-01-01', periods=rows, freq='S'),
+        'timestamp': pd.date_range('2026-01-01', periods=rows, freq='s'),
         'feature_1': np.random.randn(rows),
         'feature_2': np.random.randn(rows),
         'protected_group': np.random.choice(['A', 'B'], size=rows),
