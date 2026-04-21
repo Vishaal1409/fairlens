@@ -1,125 +1,57 @@
+@config "../tailwind.config.js";
 @import "tailwindcss";
 
-/* =========================================================
-   FAIRLENS "GOD-TIER" DESIGN SYSTEM (RESET)
-   - True-black depth, liquid glass, high contrast text
-   - Gradient shimmer typography + glow micro-interactions
-========================================================= */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400&display=swap');
 
 @theme {
-  /* Surfaces */
-  --bg: #050505;
-  --bg2: #07070a;
-  --panel: rgba(255, 255, 255, 0.06);  /* 6% white for glass */
-  --panel2: rgba(255, 255, 255, 0.04);
-  --stroke: rgba(255, 255, 255, 0.10);
-  --stroke2: rgba(255, 255, 255, 0.14);
-
-  /* Text (WCAG-minded on dark) */
-  --h: #ffffff;
-  --p: rgba(255, 255, 255, 0.78);
-  --muted: rgba(255, 255, 255, 0.62);
-  --faint: rgba(255, 255, 255, 0.45);
-
-  /* Accents */
-  --cyan: #22d3ee;
-  --purple: #a78bfa;
-  --lime: #a3ff12;
-  --success: #1de9b6;
-  --warning: #a3ff12;
-  --error: #ff3d5a;
-
-  /* Fonts */
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --color-jscolors-void: #07070F;
+  --color-jscolors-deep: #0D0D1A;
+  --color-jscolors-surface: #13131F;
+  --color-jscolors-elevated: #1A1A2E;
+  --color-jscolors-rim: #252540;
+  --color-jscolors-accent-violet: #7C6FF7;
+  --color-jscolors-accent-teal: #3DDBD9;
+  --color-jscolors-accent-amber: #F5A623;
+  --color-jscolors-accent-red: #FF4757;
+  --color-jscolors-accent-green: #2ECC71;
+  --color-jscolors-text-primary: #F0EFFF;
+  --color-jscolors-text-secondary: #9B9BC0;
+  --color-jscolors-text-muted: #5A5A7A;
 }
 
 @layer base {
   html { scroll-behavior: smooth; }
   body {
-    background: radial-gradient(1200px 800px at 20% 10%, rgba(34, 211, 238, 0.10), transparent 60%),
-                radial-gradient(1200px 900px at 85% 85%, rgba(167, 139, 250, 0.09), transparent 60%),
-                linear-gradient(180deg, var(--bg), var(--bg2));
-    color: var(--p);
-    font-family: var(--font-sans);
+    background: #07070F;
+    color: #F0EFFF;
+    font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
   }
 
-  h1, h2, h3, h4, h5, h6 { color: var(--h); }
-  a { color: var(--h); }
-
-  ::selection { background: rgba(34, 211, 238, 0.22); }
-
-  /* Premium thin scrollbar */
-  ::-webkit-scrollbar { width: 8px; height: 8px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.10);
-    border-radius: 999px;
-    border: 2px solid transparent;
-    background-clip: padding-box;
-  }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
-
-  .material-symbols-outlined {
-    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
-  }
+  ::selection { background: rgba(124, 111, 247, 0.26); }
 }
 
 @layer components {
-  /* Liquid glass: blur + faint fill */
-  .glass {
-    background: var(--panel);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-medium transition duration-200 active:scale-[0.97] cursor-pointer;
   }
 
-  /* Gradient stroke (1px) without extra wrappers */
-  .glass-stroke {
-    position: relative;
-  }
-  .glass-stroke::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    background: linear-gradient(135deg,
-      rgba(34, 211, 238, 0.35),
-      rgba(255, 255, 255, 0.10),
-      rgba(167, 139, 250, 0.35)
-    );
-    -webkit-mask:
-      linear-gradient(#000 0 0) content-box,
-      linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
-    opacity: 0.85;
+  .card {
+    @apply rounded-[20px] border border-jscolors-rim bg-jscolors-surface p-6 transition duration-300 ease-out hover:-translate-y-1 hover:border-[color:rgb(124_111_247/0.25)];
   }
 
-  .glass-card {
-    border-radius: 20px;
-    box-shadow:
-      0 18px 60px -30px rgba(0, 0, 0, 0.85),
-      0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+  .section-label {
+    @apply font-mono text-[11px] tracking-[0.35em] uppercase;
   }
+}
 
-  .glow-cyan {
-    box-shadow: 0 0 0 1px rgba(34,211,238,0.18), 0 0 28px rgba(34,211,238,0.20);
-  }
-  .glow-purple {
-    box-shadow: 0 0 0 1px rgba(167,139,250,0.18), 0 0 28px rgba(167,139,250,0.20);
-  }
-  .glow-lime {
-    box-shadow: 0 0 0 1px rgba(163,255,18,0.18), 0 0 28px rgba(163,255,18,0.16);
-  }
+@layer utilities {
+  .text-balance { text-wrap: balance; }
 
-  /* Shimmer gradient text (hero title) */
-  .shimmer-text {
-    background: linear-gradient(90deg, var(--cyan), var(--purple), var(--cyan));
+  .shimmer {
+    background: linear-gradient(90deg, #7C6FF7, #3DDBD9, #7C6FF7);
     background-size: 200% 100%;
     -webkit-background-clip: text;
     background-clip: text;
@@ -127,27 +59,20 @@
     animation: shimmerText 6s ease-in-out infinite;
   }
 
-  /* Micro-grid texture */
-  .micro-grid {
-    background-image:
-      linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
-    background-size: 44px 44px;
-    background-position: -1px -1px;
-    mask-image: radial-gradient(circle at 35% 30%, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 62%);
+  .skeleton {
+    background: linear-gradient(90deg, #13131F, #1A1A2E, #13131F);
+    background-size: 200% 100%;
+    animation: shimmerBg 1.5s ease-in-out infinite;
   }
-
-  .mono { font-family: var(--font-mono); }
-}
-
-@layer utilities {
-  .text-h { color: var(--h); }
-  .text-p { color: var(--p); }
-  .text-muted { color: var(--muted); }
-  .text-faint { color: var(--faint); }
 }
 
 @keyframes shimmerText {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes shimmerBg {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
