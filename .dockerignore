@@ -1,0 +1,44 @@
+# Virtual environments
+venv/
+.venv/
+backend/venv/
+
+# Python cache / artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment variables & DBs
+.env
+.env.*
+*.sqlite
+*.db
+
+# Source control & CI
+.git/
+.github/
+
+# Testing
+tests/
+*_test.py
+test_*.py
+
+# Node/Frontend (not needed in backend container)
+node_modules/
+src/
+public/
+*.html
+package*.json
+vite.config.js
+eslint.config.js
+.vite/
+
+# Documentation
+*.docx
+*.md
+
+# Local data cache
+uploads/
+data/
+results/
