@@ -9,18 +9,20 @@ import ComparisonPage from './pages/ComparisonPage'
 
 function App() {
   return (
-    <BrowserRouter>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<UploadPage />} />
-          <Route path="/results" element={<ResultsPage />} />
-          <Route path="/explain" element={<ExplainabilityPage />} />
-          <Route path="/mitigate" element={<MitigationPage />} />
-          <Route path="/scorecard" element={<ScorecardPage />} />
-          <Route path="/compare" element={<ComparisonPage />} />
-        </Routes>
-      </Layout>
-    </BrowserRouter>
+    <div className="min-h-dvh text-p">
+      <BrowserRouter>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<UploadPage />} />
+            <Route path="/results" element={<ResultsPage />} />
+            <Route path="/explain" element={<ExplainabilityPage />} />
+            <Route path="/mitigate" element={<MitigationPage />} />
+            <Route path="/scorecard" element={<ScorecardPage />} />
+            <Route path="/compare" element={<ComparisonPage />} />
+          </Routes>
+        </Layout>
+      </BrowserRouter>
+    </div>
   )
 }
 

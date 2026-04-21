@@ -3,7 +3,7 @@ import Sidebar from "./Sidebar";
 
 const Layout = ({ children }) => {
   return (
-    <div className="flex min-h-screen bg-[#121315] text-[#e3e2e3]">
+    <div className="flex min-h-screen bg-[--color-surface] text-[--color-on-surface]">
       {/* Fixed Sidebar */}
       <Sidebar />
 
@@ -11,9 +11,9 @@ const Layout = ({ children }) => {
       <div className="flex-1 ml-64 flex flex-col min-h-screen relative overflow-hidden">
         {/* Top Header with your Glass Panel class */}
         <header className="h-14 flex items-center px-8 glass-panel border-b border-white/5 sticky top-0 z-40">
-           <span className="gradient-text font-mono text-[10px] tracking-widest uppercase font-bold">
-             FairLens System Protocol
-           </span>
+          <span className="font-mono text-[10px] tracking-[0.28em] uppercase font-bold text-white/70">
+            FairLens System Protocol
+          </span>
         </header>
 
         {/* Scrollable Main Area */}

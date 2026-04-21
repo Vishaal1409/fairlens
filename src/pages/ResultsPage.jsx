@@ -314,7 +314,7 @@ const ResultsPage = () => {
     };
 
     return (
-        <div className="min-h-screen text-[#e3e2e3]">
+        <div className="min-h-screen text-[--color-on-surface]">
 
             {/* ─── PAGE HEADER ─── */}
             <motion.div
@@ -326,15 +326,15 @@ const ResultsPage = () => {
                 <div className="flex items-center justify-between flex-wrap gap-4">
                     <div>
                         <div className="flex items-center gap-2.5 mb-1">
-                            <div className="w-1 h-5 rounded-full bg-[#6b2fbf]" />
+                            <div className="w-1 h-5 rounded-full bg-[--color-primary]" />
                             <h1 className="text-[22px] font-semibold text-white tracking-tight">
                                 Audit Results
                             </h1>
-                            <span className="ml-2 px-2.5 py-0.5 rounded-full bg-[#6b2fbf]/10 border border-[#6b2fbf]/20 text-[10px] font-semibold text-[#d6baff] uppercase tracking-wider">
+                            <span className="ml-2 px-2.5 py-0.5 rounded-full bg-[--color-primary]/10 border border-[--color-primary]/20 text-[10px] font-semibold text-white uppercase tracking-wider">
                                 Live
                             </span>
                         </div>
-                        <p className="text-[13px] text-[#888780] ml-3.5">
+                        <p className="text-[13px] text-white/55 ml-3.5">
                             AI fairness analysis — review metrics, explore feature impact, and apply mitigation.
                         </p>
                     </div>
@@ -343,8 +343,10 @@ const ResultsPage = () => {
                 </div>
             </motion.div>
 
-            {/* ─── SECTION 1: HERO OVERVIEW ─── */}
-            <section className="mb-10">
+            {/* ─── BENTO GRID DASHBOARD ─── */}
+            <div className="grid grid-cols-12 gap-6">
+            {/* ─── TILE: OVERVIEW ─── */}
+            <section className="col-span-12 lg:col-span-8">
                 <SectionHeader
                     icon={BarChart3}
                     title="Overview"
@@ -360,8 +362,41 @@ const ResultsPage = () => {
                 </motion.div>
             </section>
 
-            {/* ─── SECTION 2: FAIRNESS METRICS ─── */}
-            <section className="mb-12">
+            {/* ─── TILE: ACTIONS ─── */}
+            <section className="col-span-12 lg:col-span-4">
+                <SectionHeader
+                    icon={Flame}
+                    title="Actions"
+                    subtitle="Export + mitigation controls"
+                    delay={0.12}
+                />
+                <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 backdrop-blur-xl">
+                    <p className="text-[10px] font-mono uppercase tracking-[0.28em] text-white/55">
+                        Controls
+                    </p>
+                    <p className="mt-2 text-[13px] text-white/70 leading-relaxed">
+                        Download artifacts for judges and trigger mitigation to show a visible “before → after” shift.
+                    </p>
+                    <div className="mt-5">
+                        <ExportReport metrics={metrics} shapValues={shapValues} label="Export Evidence Pack" />
+                    </div>
+                    <div className="mt-4">
+                        <motion.button
+                            onClick={handleMitigation}
+                            disabled={loading}
+                            whileHover={!loading ? { y: -2 } : {}}
+                            whileTap={!loading ? { scale: 0.99 } : {}}
+                            className="w-full rounded-xl px-4 py-3 font-extrabold text-[13px] text-black
+                                       bg-[--color-primary] hover:brightness-110 transition disabled:opacity-50"
+                        >
+                            {loading ? "Applying mitigation…" : "Apply Mitigation"}
+                        </motion.button>
+                    </div>
+                </div>
+            </section>
+
+            {/* ─── TILE: METRICS ─── */}
+            <section className="col-span-12">
                 <SectionHeader
                     icon={Target}
                     title="Fairness Metrics"
@@ -379,18 +414,23 @@ const ResultsPage = () => {
                 />
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                     {Object.entries(metrics).map(([key, value], index) => (
-                        <MetricCardPremium
+                        <div
                             key={key}
-                            metricKey={key}
-                            value={value}
-                            index={index}
-                        />
+                            className="transform-gpu transition-transform duration-300 will-change-transform
+                                       hover:[transform:perspective(900px)_rotateX(6deg)_rotateY(-7deg)_translateY(-6px)]"
+                        >
+                            <MetricCardPremium
+                                metricKey={key}
+                                value={value}
+                                index={index}
+                            />
+                        </div>
                     ))}
                 </div>
             </section>
 
-            {/* ─── SECTION 3: EXPLAINABILITY ─── */}
-            <section className="mb-12">
+            {/* ─── TILE: EXPLAINABILITY ─── */}
+            <section className="col-span-12">
                 <SectionHeader
                     icon={Sparkles}
                     title="Explainability"
@@ -412,8 +452,8 @@ const ResultsPage = () => {
                 </ChartGrid>
             </section>
 
-            {/* ─── SECTION 4: MITIGATION — HERO CTA ─── */}
-            <section className="mb-10">
+            {/* ─── TILE: MITIGATION STORY ─── */}
+            <section className="col-span-12">
                 <SectionHeader
                     icon={Zap}
                     title="Mitigation"
@@ -426,13 +466,11 @@ const ResultsPage = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: 0.5 }}
                 >
-                    <div className="relative rounded-2xl border border-white/[0.06] overflow-hidden"
-                         style={{ background: 'linear-gradient(135deg, #1b1c1d 0%, #1f2021 50%, #1b1c1d 100%)' }}
-                    >
+                    <div className="relative rounded-2xl border border-white/[0.06] overflow-hidden bg-[--color-surface-container-low]">
                         {/* Decorative elements */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-[#6b2fbf]/[0.04] via-transparent to-transparent pointer-events-none" />
-                        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#6b2fbf]/40 to-transparent" />
-                        <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full blur-3xl opacity-[0.04] bg-[#6b2fbf] pointer-events-none" />
+                        <div className="absolute inset-0 bg-gradient-to-br from-[--color-primary]/[0.06] via-transparent to-transparent pointer-events-none" />
+                        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                        <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full blur-3xl opacity-[0.06] bg-[--color-primary] pointer-events-none" />
 
                         <div className="relative z-10 p-8 sm:p-10">
                             <AnimatePresence mode="wait">
@@ -449,15 +487,15 @@ const ResultsPage = () => {
                                         <motion.div
                                             animate={{ y: [0, -4, 0] }}
                                             transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-                                            className="inline-flex p-5 rounded-2xl bg-gradient-to-br from-[#6b2fbf]/15 to-[#6b2fbf]/5 border border-[#6b2fbf]/20 mb-6"
+                                            className="inline-flex p-5 rounded-2xl bg-gradient-to-br from-[--color-primary]/15 to-[--color-primary]/5 border border-[--color-primary]/20 mb-6"
                                         >
-                                            <Zap size={32} className="text-[#7c3aed]" />
+                                            <Zap size={32} className="text-[--color-primary]" />
                                         </motion.div>
 
                                         <h3 className="text-[22px] font-bold text-white mb-2 tracking-tight">
                                             Bias Detected in Your Model
                                         </h3>
-                                        <p className="text-[14px] text-[#888780] leading-relaxed mb-4 max-w-md mx-auto">
+                                        <p className="text-[14px] text-white/55 leading-relaxed mb-4 max-w-md mx-auto">
                                             Our AI engine analyzes bias patterns and applies post-processing
                                             calibration to improve fairness — without retraining.
                                         </p>
@@ -486,17 +524,9 @@ const ResultsPage = () => {
                                                 whileHover={!loading ? { scale: 1.03, y: -2 } : {}}
                                                 whileTap={!loading ? { scale: 0.98 } : {}}
                                                 className="group relative inline-flex items-center gap-2.5 px-10 py-4
-                                                           rounded-xl font-bold text-[14px] text-white cursor-pointer
+                                                           rounded-xl font-extrabold text-[14px] text-black cursor-pointer
                                                            transition-all duration-300 disabled:cursor-not-allowed
-                                                           disabled:opacity-50"
-                                                style={{
-                                                    background: loading
-                                                        ? '#2a2b2c'
-                                                        : 'linear-gradient(135deg, #6b2fbf 0%, #7c3aed 50%, #9333ea 100%)',
-                                                    boxShadow: loading
-                                                        ? 'none'
-                                                        : '0 12px 32px -4px rgba(107, 47, 191, 0.5), 0 0 0 1px rgba(107, 47, 191, 0.2), inset 0 1px 0 rgba(255,255,255,0.1)',
-                                                }}
+                                                           disabled:opacity-50 bg-[--color-primary] hover:brightness-110"
                                             >
                                                 {loading ? (
                                                     <>
@@ -513,11 +543,9 @@ const ResultsPage = () => {
 
                                                 {/* Animated glow ring */}
                                                 {!loading && (
-                                                    <span className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                                                          style={{
-                                                              boxShadow: '0 0 40px 4px rgba(107, 47, 191, 0.3)',
-                                                              pointerEvents: 'none',
-                                                          }}
+                                                    <span
+                                                        className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                                                        style={{ boxShadow: '0 0 46px 6px rgba(0,229,255,0.22)' }}
                                                     />
                                                 )}
                                             </motion.button>
@@ -530,7 +558,7 @@ const ResultsPage = () => {
                                                 Non-destructive
                                             </span>
                                             <span className="flex items-center gap-1.5">
-                                                <TrendingUp size={12} className="text-[#6b2fbf]/70" />
+                                                <TrendingUp size={12} className="text-[--color-primary]/70" />
                                                 AI-optimized
                                             </span>
                                             <span className="flex items-center gap-1.5">
@@ -580,6 +608,7 @@ const ResultsPage = () => {
                     </div>
                 </motion.div>
             </section>
+            </div>
         </div>
     );
 };

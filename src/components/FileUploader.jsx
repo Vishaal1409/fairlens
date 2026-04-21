@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { uploadFile, analyzeFile, explainFile } from "../api/client"
 import { useNavigate } from "react-router-dom"
+import FeedbackIndicator from "./FeedbackIndicator"
 
 export default function FileUploader() {
   const [status, setStatus] = useState("idle")
@@ -66,7 +67,19 @@ export default function FileUploader() {
     <div
       onDrop={handleDrop}
       onDragOver={(e) => e.preventDefault()}
-      className="w-full flex flex-col items-center justify-center p-10 rounded-3xl transition-all hover:bg-surface-bright/20 cursor-pointer"
+      className={[
+        "w-full flex flex-col items-center justify-center p-10 rounded-3xl cursor-pointer",
+        "transition-all",
+        status === "done"
+          ? "bg-[--color-success]/[0.04] border border-[--color-success]/15 shadow-[0_0_0_1px_rgba(29,233,182,0.16),_0_0_50px_rgba(29,233,182,0.10)]"
+          : status === "error"
+          ? "bg-[--color-error]/[0.04] border border-[--color-error]/15 shadow-[0_0_0_1px_rgba(255,61,90,0.16),_0_0_50px_rgba(255,61,90,0.10)]"
+          : status === "analyzing"
+          ? "bg-[--color-warning]/[0.03] border border-[--color-warning]/15 shadow-[0_0_0_1px_rgba(163,255,18,0.14),_0_0_50px_rgba(163,255,18,0.08)]"
+          : status === "uploading"
+          ? "bg-[--color-primary]/[0.03] border border-[--color-primary]/15 shadow-[0_0_0_1px_rgba(0,229,255,0.14),_0_0_50px_rgba(0,229,255,0.08)]"
+          : "hover:bg-white/[0.03] border border-white/[0.06]",
+      ].join(" ")}
       onClick={() => document.getElementById("fileInput").click()}
     >
       <input
@@ -81,6 +94,23 @@ export default function FileUploader() {
         <span className="material-symbols-outlined text-primary text-4xl" style={{ fontVariationSettings: "'wght' 200" }}>upload_file</span>
       </div>
 
+      <div className="w-full max-w-[520px] mb-6">
+        <FeedbackIndicator
+          status={status}
+          message={
+            status === "idle"
+              ? "Upload data to begin an audit"
+              : status === "uploading"
+              ? `Uploading${fileName ? `: ${fileName}` : ""}`
+              : status === "analyzing"
+              ? "Running bias metrics + explainability"
+              : status === "done"
+              ? "Audit complete — preparing dashboard"
+              : "Upload failed — verify CSV and retry"
+          }
+        />
+      </div>
+
       {status === "idle" && (
         <>
           <h3 className="text-2xl font-semibold mb-2 tracking-tight text-on-surface">Drag & drop dataset</h3>
@@ -91,18 +121,18 @@ export default function FileUploader() {
         </>
       )}
       {status === "uploading" && (
-        <div className="text-lg text-primary font-medium mt-4">
-          Uploading {fileName}...
+        <div className="text-[12px] text-white/55 font-mono mt-2">
+          Phase 1/2: ingest
         </div>
       )}
       {status === "analyzing" && (
-        <div className="text-lg text-[#52e1a5] font-medium mt-4">
-          Analyzing for bias & SHAP...
+        <div className="text-[12px] text-white/55 font-mono mt-2">
+          Phase 2/2: metrics + explanations
         </div>
       )}
       {status === "done" && (
-        <div className="text-lg text-[#4edea3] font-medium mt-4">
-          Done! Redirecting...
+        <div className="text-[12px] text-white/55 font-mono mt-2">
+          Redirecting to dashboard…
         </div>
       )}
       {status === "error" && (

@@ -1,212 +1,154 @@
-/* 1. The ONLY Tailwind directive needed for v4 */
 @import "tailwindcss";
 
-/* 2. Your Premium Theme Variables */
+/* =========================================================
+   FAIRLENS "GOD-TIER" DESIGN SYSTEM (RESET)
+   - True-black depth, liquid glass, high contrast text
+   - Gradient shimmer typography + glow micro-interactions
+========================================================= */
+
 @theme {
-  --color-primary: #6b2fbf;
-  --color-primary-container: #d6baff;
-  --color-surface: #121315;
-  --color-surface-container: #1f2021;
-  --color-surface-container-low: #1b1c1d;
-  --color-surface-container-high: #2a2b2c;
-  --color-on-surface: #e3e2e3;
-  --color-on-surface-variant: #cac4d0;
+  /* Surfaces */
+  --bg: #050505;
+  --bg2: #07070a;
+  --panel: rgba(255, 255, 255, 0.06);  /* 6% white for glass */
+  --panel2: rgba(255, 255, 255, 0.04);
+  --stroke: rgba(255, 255, 255, 0.10);
+  --stroke2: rgba(255, 255, 255, 0.14);
 
-  --font-sans: "Inter", sans-serif;
-  --font-mono: "Berkeley Mono", monospace;
+  /* Text (WCAG-minded on dark) */
+  --h: #ffffff;
+  --p: rgba(255, 255, 255, 0.78);
+  --muted: rgba(255, 255, 255, 0.62);
+  --faint: rgba(255, 255, 255, 0.45);
 
-  --radius-4xl: 2rem;
+  /* Accents */
+  --cyan: #22d3ee;
+  --purple: #a78bfa;
+  --lime: #a3ff12;
+  --success: #1de9b6;
+  --warning: #a3ff12;
+  --error: #ff3d5a;
+
+  /* Fonts */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
-/* 3. Global Base Styles */
 @layer base {
   html { scroll-behavior: smooth; }
-
   body {
-    margin: 0;
-    padding: 0;
-    background-color: var(--color-surface);
-    color: var(--color-on-surface);
+    background: radial-gradient(1200px 800px at 20% 10%, rgba(34, 211, 238, 0.10), transparent 60%),
+                radial-gradient(1200px 900px at 85% 85%, rgba(167, 139, 250, 0.09), transparent 60%),
+                linear-gradient(180deg, var(--bg), var(--bg2));
+    color: var(--p);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
   }
 
-  /* Premium scrollbar */
-  ::-webkit-scrollbar { width: 5px; height: 5px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 4px; }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.12); }
+  h1, h2, h3, h4, h5, h6 { color: var(--h); }
+  a { color: var(--h); }
 
-  /* Material Symbols icon weight */
+  ::selection { background: rgba(34, 211, 238, 0.22); }
+
+  /* Premium thin scrollbar */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.10);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
+
   .material-symbols-outlined {
     font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
   }
 }
 
-/* ─────────────────────────────────────────────────────────
-   4. Custom Component Classes (Glassmorphism & Premiums)
-───────────────────────────────────────────────────────── */
 @layer components {
-  /* Glassmorphism surface */
-  .glass-panel {
-    background: rgba(31, 32, 33, 0.7);
+  /* Liquid glass: blur + faint fill */
+  .glass {
+    background: var(--panel);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.05);
   }
 
-  /* Gradient CTA button */
-  .premium-btn {
-    background: linear-gradient(135deg, #6b2fbf 0%, #d6baff 100%);
-    box-shadow: 0 10px 20px -10px rgba(107, 47, 191, 0.5);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .premium-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 15px 25px -10px rgba(107, 47, 191, 0.6);
-  }
-
-  /* Gradient heading text */
-  .gradient-text {
-    background: linear-gradient(to right, #d6baff, #6b2fbf);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-
-  /* Dark card */
-  .premium-card {
-    background: #1b1c1d;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 16px;
-    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .premium-card:hover {
-    border-color: rgba(255, 255, 255, 0.1);
-    box-shadow: 0 8px 32px -8px rgba(107, 47, 191, 0.12);
-    transform: translateY(-2px);
-  }
-
-  /* Layered box-shadow elevation */
-  .card-elevation {
-    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5),
-                0 0 15px -3px rgba(107, 47, 191, 0.1);
-  }
-
-  /* Subtle active-state glow for nav links */
-  .soft-shadow {
-    box-shadow: 0 0 0 1px rgba(107, 47, 191, 0.15),
-                0 2px 12px -2px rgba(107, 47, 191, 0.2);
-  }
-
-  /* Dashed SVG drop-zone border */
-  .drop-zone-border {
-    background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='28' ry='28' stroke='%234B4453' stroke-width='2' stroke-dasharray='8%2c 12' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
-    border-radius: 28px;
-  }
-
-  /* Hero section ambient glow */
-  .hero-glow {
+  /* Gradient stroke (1px) without extra wrappers */
+  .glass-stroke {
     position: relative;
-    overflow: hidden;
   }
-  .hero-glow::before {
+  .glass-stroke::before {
     content: '';
     position: absolute;
     inset: 0;
-    background:
-      radial-gradient(ellipse at 30% 20%, rgba(107, 47, 191, 0.12) 0%, transparent 60%),
-      radial-gradient(ellipse at 70% 80%, rgba(107, 47, 191, 0.06) 0%, transparent 60%);
-    pointer-events: none;
-  }
-
-  /* Shimmer skeleton loading */
-  .shimmer-bg {
-    background: linear-gradient(90deg,
-      transparent 25%,
-      rgba(255,255,255,0.04) 50%,
-      transparent 75%
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg,
+      rgba(34, 211, 238, 0.35),
+      rgba(255, 255, 255, 0.10),
+      rgba(167, 139, 250, 0.35)
     );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0.85;
+  }
+
+  .glass-card {
+    border-radius: 20px;
+    box-shadow:
+      0 18px 60px -30px rgba(0, 0, 0, 0.85),
+      0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+  }
+
+  .glow-cyan {
+    box-shadow: 0 0 0 1px rgba(34,211,238,0.18), 0 0 28px rgba(34,211,238,0.20);
+  }
+  .glow-purple {
+    box-shadow: 0 0 0 1px rgba(167,139,250,0.18), 0 0 28px rgba(167,139,250,0.20);
+  }
+  .glow-lime {
+    box-shadow: 0 0 0 1px rgba(163,255,18,0.18), 0 0 28px rgba(163,255,18,0.16);
+  }
+
+  /* Shimmer gradient text (hero title) */
+  .shimmer-text {
+    background: linear-gradient(90deg, var(--cyan), var(--purple), var(--cyan));
     background-size: 200% 100%;
-    animation: shimmer 2s ease-in-out infinite;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: shimmerText 6s ease-in-out infinite;
   }
 
-  /* Fade-in entrance */
-  .animate-fade-in {
-    animation: fadeInUp 0.6s ease-out both;
+  /* Micro-grid texture */
+  .micro-grid {
+    background-image:
+      linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+    background-size: 44px 44px;
+    background-position: -1px -1px;
+    mask-image: radial-gradient(circle at 35% 30%, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 62%);
   }
 
-  /* Sparkline svg wrapper */
-  .sparkline-container svg { display: block; }
-
-  /* Recharts sparkline inside comparison rows */
-  .comparison-spark-cell {
-    min-width: 72px;
-    max-width: 96px;
-  }
-
-  /* Monospace utility (legacy alias) */
   .mono { font-family: var(--font-mono); }
 }
 
-/* ─────────────────────────────────────────────────────────
-   5. Keyframe Animations
-───────────────────────────────────────────────────────── */
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
+@layer utilities {
+  .text-h { color: var(--h); }
+  .text-p { color: var(--p); }
+  .text-muted { color: var(--muted); }
+  .text-faint { color: var(--faint); }
 }
 
-@keyframes shimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position:  200% 0; }
-}
-
-@keyframes pulseGlow {
-  0%, 100% { opacity: 0.6; }
-  50%       { opacity: 1;   }
-}
-
-@keyframes pulseRing {
-  0%   { transform: scale(0.95); opacity: 0.7; }
-  50%  { transform: scale(1.05); opacity: 1;   }
-  100% { transform: scale(0.95); opacity: 0.7; }
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0px);  }
-  50%       { transform: translateY(-4px); }
-}
-
-@keyframes gradientShift {
-  0%   { background-position: 0%   50%; }
-  50%  { background-position: 100% 50%; }
-  100% { background-position: 0%   50%; }
-}
-
-/* ─────────────────────────────────────────────────────────
-   6. Comparison Delta Alert
-───────────────────────────────────────────────────────── */
-@keyframes delta-pulse {
-  0%, 100% { box-shadow: 0 0 0 0   rgba(244, 63, 94, 0.25); }
-  50%       { box-shadow: 0 0 12px 2px rgba(244, 63, 94, 0.15); }
-}
-
-.delta-alert-glow {
-  animation: delta-pulse 2.5s ease-in-out infinite;
-}
-
-/* ─────────────────────────────────────────────────────────
-   7. Recharts dark-mode overrides
-───────────────────────────────────────────────────────── */
-.recharts-default-tooltip {
-  background:    #1b1c1d !important;
-  border:        1px solid rgba(255,255,255,0.08) !important;
-  border-radius: 10px !important;
-}
-
-.recharts-legend-item-text {
-  color:     #888780 !important;
-  font-size: 11px !important;
+@keyframes shimmerText {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }

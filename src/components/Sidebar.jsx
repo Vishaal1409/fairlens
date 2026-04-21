@@ -14,10 +14,12 @@ const Sidebar = () => {
   const navigate = useNavigate();
 
   return (
-    <aside className="w-64 h-screen fixed left-0 top-0 bg-[#121315] border-r border-white/5 flex flex-col py-6 px-4 z-50">
+    <aside className="w-64 h-screen fixed left-0 top-0 bg-[--color-surface] border-r border-white/5 flex flex-col py-6 px-4 z-50">
       <div className="mb-10 px-2">
-        <h1 className="text-2xl font-bold tracking-tighter gradient-text">FairLens</h1>
-        <p className="mono text-[9px] text-gray-500 uppercase tracking-widest mt-1">v1.0.4 Premium Audit</p>
+        <h1 className="text-2xl font-black tracking-[-0.04em] text-white">
+          <span className="gradient-text">Fair</span>Lens
+        </h1>
+        <p className="mono text-[9px] text-white/40 uppercase tracking-[0.28em] mt-1">v1.0.4 Audit</p>
       </div>
 
       <nav className="flex-1 space-y-1">
@@ -28,8 +30,8 @@ const Sidebar = () => {
             className={({ isActive }) =>
               `flex items-center gap-3 px-4 py-3 rounded-xl text-[13px] font-medium transition-all ${
                 isActive 
-                ? "bg-[#6b2fbf]/10 text-[#d6baff] border border-[#6b2fbf]/20 soft-shadow" 
-                : "text-gray-400 hover:text-white hover:bg-white/5"
+                ? "bg-[--color-primary]/[0.08] text-white border border-[--color-primary]/20 soft-shadow" 
+                : "text-white/55 hover:text-white hover:bg-white/5"
               }`
             }
           >
@@ -43,7 +45,7 @@ const Sidebar = () => {
         <div className="p-4 rounded-2xl glass-panel border border-white/5">
            <p className="text-[10px] mono text-gray-500 mb-2">AUDIT CREDITS</p>
            <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-[#6b2fbf] to-[#d6baff] w-[40%]"></div>
+              <div className="h-full bg-gradient-to-r from-[--color-primary] to-[--color-success] w-[40%]"></div>
            </div>
         </div>
         <button 
