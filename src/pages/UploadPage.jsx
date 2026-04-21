@@ -5,11 +5,17 @@ import FileUploader from '../components/FileUploader';
 const UploadPage = () => {
   const navigate = useNavigate();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [modelTask, setModelTask] = useState('Binary Class.');
+  const [sensitiveAttrs, setSensitiveAttrs] = useState(['Gender', 'Race']);
 
   const handleStartAnalysis = () => {
     setIsAnalyzing(true);
     // Simulated delay for UX "Polish" before navigating
     setTimeout(() => navigate('/results'), 1800);
+  };
+
+  const removeAttr = (attrToRemove) => {
+    setSensitiveAttrs(sensitiveAttrs.filter(attr => attr !== attrToRemove));
   };
 
   return (
@@ -59,20 +65,30 @@ const UploadPage = () => {
               <div>
                 <label className="text-[10px] font-mono uppercase tracking-widest text-[#888780] block mb-3">Model Task</label>
                 <div className="flex p-1 bg-[#121315] rounded-xl gap-1">
-                  <button className="flex-1 py-2 text-xs font-bold bg-[#6b2fbf] text-white rounded-lg shadow-sm">Binary Class.</button>
-                  <button className="flex-1 py-2 text-xs font-medium text-[#888780] hover:text-white">Regression</button>
+                  <button 
+                    onClick={() => setModelTask('Binary Class.')}
+                    className={`flex-1 py-2 text-xs font-bold rounded-lg shadow-sm transition-colors ${modelTask === 'Binary Class.' ? 'bg-[#6b2fbf] text-white' : 'bg-transparent text-[#888780] hover:text-white'}`}
+                  >
+                    Binary Class.
+                  </button>
+                  <button 
+                    onClick={() => setModelTask('Regression')}
+                    className={`flex-1 py-2 text-xs font-bold rounded-lg shadow-sm transition-colors ${modelTask === 'Regression' ? 'bg-[#6b2fbf] text-white' : 'bg-transparent text-[#888780] hover:text-white'}`}
+                  >
+                    Regression
+                  </button>
                 </div>
               </div>
 
               <div>
                 <label className="text-[10px] font-mono uppercase tracking-widest text-[#888780] block mb-3">Sensitive Attributes</label>
                 <div className="flex flex-wrap gap-2">
-                  <span className="px-3 py-1.5 bg-[#6b2fbf]/20 border border-[#6b2fbf]/30 rounded-full text-[11px] font-bold text-[#d6baff] flex items-center gap-1">
-                    Gender <span className="material-symbols-outlined text-xs">close</span>
-                  </span>
-                  <span className="px-3 py-1.5 bg-[#6b2fbf]/20 border border-[#6b2fbf]/30 rounded-full text-[11px] font-bold text-[#d6baff] flex items-center gap-1">
-                    Race <span className="material-symbols-outlined text-xs">close</span>
-                  </span>
+                  {sensitiveAttrs.map(attr => (
+                    <button key={attr} onClick={() => removeAttr(attr)} className="px-3 py-1.5 bg-[#6b2fbf]/20 hover:bg-[#6b2fbf]/30 transition-colors border border-[#6b2fbf]/30 rounded-full text-[11px] font-bold text-[#d6baff] flex items-center gap-1">
+                      {attr} <span className="material-symbols-outlined text-xs">close</span>
+                    </button>
+                  ))}
+                  {sensitiveAttrs.length === 0 && <span className="text-xs text-[#888780]">No attributes selected</span>}
                 </div>
               </div>
             </div>
