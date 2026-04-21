@@ -13,7 +13,6 @@ from api.routes import router
 app = FastAPI(
     title="FairLens API",
     version="0.2.0",
-    root_path="/backend",
 )
 
 app.add_middleware(

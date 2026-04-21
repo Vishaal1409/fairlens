@@ -9,7 +9,7 @@ import ComparisonPage from './pages/ComparisonPage'
 
 function App() {
   return (
-    <BrowserRouter basename="/frontend">
+    <BrowserRouter>
       <Layout>
         <Routes>
           <Route path="/" element={<UploadPage />} />
