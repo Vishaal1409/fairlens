@@ -3,13 +3,14 @@ version: "3.8"
 services:
   backend:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
     container_name: fairlens-backend
     ports:
       - "8000:8000"
     environment:
       - DEBUG=false
+      - LOG_LEVEL=INFO
     volumes:
       - ./uploads:/app/uploads
     restart: unless-stopped
