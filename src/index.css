@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* 1. Define Premium Theme Variables (Tailwind v4 Syntax) */
+/* 1. Premium Theme Variables (Tailwind v4) */
 @theme {
   --color-primary: #6b2fbf;
   --color-primary-container: #d6baff;
@@ -26,20 +26,42 @@
     color: var(--color-on-surface);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Premium scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.14);
   }
 }
 
-/* 3. Your Custom Component Classes */
+/* 3. Custom Component Classes */
 @layer components {
-  /* The Glass Dashboard effect */
+  /* Glass Dashboard effect */
   .glass-panel {
     background: rgba(31, 32, 33, 0.7);
     backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.05);
   }
 
-  /* Your custom Dotted Drop Zone */
+  /* Dotted Drop Zone */
   .drop-zone-border {
     background-image: url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3crect width='100%25' height='100%25' fill='none' rx='28' ry='28' stroke='%234B4453' stroke-width='2' stroke-dasharray='8%2c 12' stroke-dashoffset='0' stroke-linecap='square'/%3e%3c/svg%3e");
     border-radius: 28px;
@@ -50,7 +72,7 @@
     box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5), 0 0 15px -3px rgba(107, 47, 191, 0.1);
   }
 
-  /* The Signature Purple Gradient Button */
+  /* Signature Purple Gradient Button */
   .premium-btn {
     background: linear-gradient(135deg, #6b2fbf 0%, #d6baff 100%);
     box-shadow: 0 10px 20px -10px rgba(107, 47, 191, 0.5);
@@ -67,6 +89,19 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
+
+  /* Premium card hover glow */
+  .premium-card {
+    background: #1b1c1d;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .premium-card:hover {
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px -8px rgba(107, 47, 191, 0.12);
+  }
 }
 
 /* 4. Utility Overrides */
@@ -76,4 +111,16 @@
 
 .mono-text {
   font-family: var(--font-mono);
+}
+
+/* 5. Recharts dark theme overrides */
+.recharts-default-tooltip {
+  background: #1b1c1d !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px !important;
+}
+
+.recharts-legend-item-text {
+  color: #888780 !important;
+  font-size: 11px !important;
 }
