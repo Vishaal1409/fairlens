@@ -1,27 +1,11 @@
-# render.yaml — Render Infrastructure as Code (Blueprint)
-# Docs: https://render.com/docs/blueprint-spec
-#
-# Usage:
-#   1. Push this file to the repo root
-#   2. Go to https://dashboard.render.com → New → Blueprint
-#   3. Connect this repository
-#   4. Render auto-detects this file and provisions the service
- 
 services:
   - type: web
-    name: fairlens-api
-    runtime: python
-    region: oregon
+    name: fairlens-backend
+    env: python
     plan: free
-    branch: main
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
-    healthCheckPath: /health
+    rootDir: backend
     envVars:
       - key: PYTHON_VERSION
-        value: "3.11.8"
-      - key: FRONTEND_URL
-        value: ""              # Set to your deployed frontend URL for CORS
-      - key: LOG_LEVEL
-        value: INFO
- 
+        value: 3.11.9
