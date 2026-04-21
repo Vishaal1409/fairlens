@@ -8,6 +8,10 @@
 ## What is FairLens?
 FairLens is an end-to-end fairness auditing platform designed to seamlessly unpack machine learning models and structurally analyze underlying bias. It enables developers and data scientists to detect discrimination rapidly, natively explain feature logic, and immediately apply mitigation fixes against protected demographic datasets.
 
+🌐 **Live App:** https://vishaal1409.github.io/fairlens/
+
+🧪 **Live Swagger UI:** https://fairlens-08o6.onrender.com/docs
+
 ## Key features
 - **Automated Bias Detection:** Upload local datasets or live models to instantly flag underlying inequalities across protected attributes.
 - **Explainability Integrations:** Compute direct feature influence out-of-the-box leveraging integrated SHAP and LIME modeling.
