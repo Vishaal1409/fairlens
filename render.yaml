@@ -6,7 +6,7 @@
 #   2. Go to https://dashboard.render.com → New → Blueprint
 #   3. Connect this repository
 #   4. Render auto-detects this file and provisions the service
-
+ 
 services:
   - type: web
     name: fairlens-api
@@ -14,7 +14,6 @@ services:
     region: oregon
     plan: free
     branch: main
-    rootDir: backend
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
@@ -25,3 +24,4 @@ services:
         value: ""              # Set to your deployed frontend URL for CORS
       - key: LOG_LEVEL
         value: INFO
+ 
