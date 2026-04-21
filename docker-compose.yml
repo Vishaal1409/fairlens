@@ -1,15 +1,41 @@
 version: "3.8"
 
 services:
+  # ─────────────────────────────────────────────
+  # Backend — FastAPI / Uvicorn
+  # ─────────────────────────────────────────────
   backend:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
     container_name: fairlens-backend
     ports:
       - "8000:8000"
     environment:
       - DEBUG=false
+      - LOG_LEVEL=INFO
     volumes:
       - ./uploads:/app/uploads
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request, sys; sys.exit(0) if urllib.request.urlopen('http://localhost:8000/health').getcode() == 200 else sys.exit(1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ─────────────────────────────────────────────
+  # Frontend — React/Vite built → served by Nginx
+  # ─────────────────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: fairlens-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
     restart: unless-stopped

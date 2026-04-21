@@ -1,5 +1,5 @@
 # Python Version: 3.11
-# Last Updated: 2026-04-18
+# Last Updated: 2026-04-21
 fastapi==0.111.0
 uvicorn[standard]==0.29.0
 python-multipart==0.0.9
@@ -9,6 +9,8 @@ joblib==1.4.2
 scikit-learn==1.4.2
 shap==0.45.0
 aif360==0.6.1
+aif360[AdversarialDebiasing]  # includes TensorFlow — large download
+aif360[inFairness]
 fairlearn==0.10.0
 httpx==0.27.0
 slowapi==0.1.9

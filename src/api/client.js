@@ -2,7 +2,8 @@ import axios from 'axios';
 
 // Create a central instance for configuration
 export const api = axios.create({
-    baseURL: 'http://localhost:8000',
+
+    baseURL: 'https://fairlens-fz8z.onrender.com',
     headers: {
         'Content-Type': 'application/json',
     },

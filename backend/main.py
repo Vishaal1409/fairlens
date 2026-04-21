@@ -2,27 +2,29 @@
 FairLens – FastAPI entry point
 """
 
-from fastapi import FastAPI
+import datetime
+
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.routes import router
 
-app = FastAPI(title="FairLens API", version="0.2.0")
+app = FastAPI(
+    title="FairLens API",
+    version="0.2.0",
+)
 
-# Allow all origins for local development (tighten in production)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Mount all routes from api/routes.py (no prefix — keeps /upload and /analyze at root)
+# Mount all routes from api/routes.py
 app.include_router(router)
 
-
-import datetime
-from fastapi import FastAPI, HTTPException
 
 @app.get("/", tags=["health"])
 def root():
@@ -33,21 +35,21 @@ def root():
 def health_check():
     dependencies = {}
     status_flag = "ok"
-    
+
     try:
         import aif360
         dependencies["aif360"] = getattr(aif360, "__version__", "installed")
     except ImportError:
         status_flag = "degraded"
         dependencies["aif360"] = "missing"
-        
+
     try:
         import fairlearn
         dependencies["fairlearn"] = getattr(fairlearn, "__version__", "installed")
     except ImportError:
         status_flag = "degraded"
         dependencies["fairlearn"] = "missing"
-        
+
     try:
         import shap
         dependencies["shap"] = getattr(shap, "__version__", "installed")
