@@ -9,7 +9,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.routes import router
 
-# root_path tells FastAPI it is mounted at /backend (for docs, redirects, OpenAPI)
 app = FastAPI(
     title="FairLens API",
     version="0.2.0",
