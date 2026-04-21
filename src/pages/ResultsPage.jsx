@@ -400,15 +400,15 @@ const ResultsPage = () => {
 
                 {/* ── Charts: SHAP + Heatmap side-by-side on desktop ── */}
                 <ChartGrid cols={2} gap="gap-6">
-                    {/* SHAP Chart */}
-                    <ChartContainer minHeight={420} maxHeight={560} aspectRatio={0.65}>
+                    {/* SHAP Chart — auto-height, no clip */}
+                    <div className="w-full min-w-0">
                         <SHAPChart shapValues={shapValues} />
-                    </ChartContainer>
+                    </div>
 
-                    {/* Heatmap */}
-                    <ChartContainer minHeight={420} maxHeight={560} aspectRatio={0.65}>
+                    {/* Heatmap — auto-height, no clip */}
+                    <div className="w-full min-w-0">
                         <BiasHeatmap metrics={metrics} />
-                    </ChartContainer>
+                    </div>
                 </ChartGrid>
             </section>
 

@@ -5,6 +5,7 @@ import ResultsPage from './pages/ResultsPage'
 import ExplainabilityPage from './pages/ExplainabilityPage'
 import MitigationPage from './pages/MitigationPage'
 import ScorecardPage from './pages/ScorecardPage'
+import ComparisonPage from './pages/ComparisonPage'
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
           <Route path="/explain" element={<ExplainabilityPage />} />
           <Route path="/mitigate" element={<MitigationPage />} />
           <Route path="/scorecard" element={<ScorecardPage />} />
+          <Route path="/compare" element={<ComparisonPage />} />
         </Routes>
       </Layout>
     </BrowserRouter>

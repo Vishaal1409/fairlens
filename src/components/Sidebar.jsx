@@ -2,11 +2,12 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 
 const navItems = [
-  { label: "Upload", icon: "cloud_upload", path: "/" },
-  { label: "Results", icon: "analytics", path: "/results" },
-  { label: "Explainability", icon: "psychology", path: "/explain" },
-  { label: "Mitigation", icon: "auto_fix_high", path: "/mitigate" },
-  { label: "Scorecard", icon: "fact_check", path: "/scorecard" }
+  { label: "Upload",      icon: "cloud_upload",    path: "/" },
+  { label: "Results",     icon: "analytics",       path: "/results" },
+  { label: "Explainability", icon: "psychology",   path: "/explain" },
+  { label: "Mitigation",  icon: "auto_fix_high",   path: "/mitigate" },
+  { label: "Compare",     icon: "compare_arrows",  path: "/compare" },
+  { label: "Scorecard",   icon: "fact_check",      path: "/scorecard" },
 ];
 
 const Sidebar = () => {
