@@ -13,10 +13,10 @@ function LensKnot() {
     <mesh>
       <torusKnotGeometry args={geomArgs} />
       <meshStandardMaterial
-        color="#7C6FF7"
+        color="#7c3aed"
         wireframe
         transparent
-        opacity={0.4}
+        opacity={0.25}
       />
     </mesh>
   )
@@ -38,8 +38,8 @@ function Typewriter({ text, className }) {
 
 export default function Hero() {
   return (
-    <section id="top" className="relative min-h-[100vh] bg-jscolors-void pt-16 overflow-hidden">
-      <div className="pointer-events-none absolute right-[-60px] top-[-60px] z-0 h-[520px] w-[520px] opacity-90">
+    <section id="top" className="relative min-h-[100vh] bg-transparent pt-16 overflow-hidden z-10">
+      <div className="pointer-events-none fixed top-0 left-0 w-[100vw] h-[100vh] z-0">
         <Canvas camera={{ position: [0, 0, 4.2], fov: 45 }} dpr={[1, 2]}>
           <ambientLight intensity={0.6} />
           <pointLight position={[4, 4, 6]} intensity={1.1} />
@@ -47,11 +47,24 @@ export default function Hero() {
         </Canvas>
       </div>
 
+      <div 
+        className="fixed inset-0 z-[1] pointer-events-none" 
+        style={{ 
+          background: 'linear-gradient(to bottom, rgba(10,10,20,0.15) 0%, rgba(10,10,20,0.25) 50%, rgba(10,10,20,0.35) 100%)' 
+        }} 
+      />
+
       <div className="relative z-10 mx-auto flex min-h-[calc(100vh-64px)] max-w-6xl flex-col items-center justify-center px-5 text-center">
-        <h1 className="text-[72px] leading-[0.9] md:text-[140px] font-bold tracking-[-0.02em] text-jscolors-text-primary">
+        <h1 
+          className="text-[72px] leading-[0.9] md:text-[140px] font-bold tracking-[-0.02em] text-[#f5f5f5]"
+          style={{ textShadow: '0 0 20px rgba(0,0,0,0.6)' }}
+        >
           FAIRLENS
         </h1>
-        <p className="mt-5 max-w-2xl text-balance text-[18px] md:text-[22px] text-jscolors-text-secondary">
+        <p 
+          className="mt-5 max-w-2xl text-balance text-[18px] md:text-[22px] text-[#f5f5f5] font-semibold"
+          style={{ textShadow: '0 0 20px rgba(0,0,0,0.6)' }}
+        >
           Uncover hidden bias. Audit AI fairly.
         </p>
 

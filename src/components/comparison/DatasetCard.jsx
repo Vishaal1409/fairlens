@@ -18,7 +18,7 @@ import { biasLabels } from '../../data/comparisonData';
 const DatasetCard = ({ dataset, label = 'Dataset', accentColor = '#6b2fbf' }) => {
   if (!dataset) {
     return (
-      <div className="flex-1 min-w-0 rounded-2xl border border-dashed border-white/10 p-8 flex flex-col items-center justify-center gap-3 text-center">
+      <div className="flex-1 min-w-0 rounded-2xl border border-solid border-white/10 p-8 flex flex-col items-center justify-center gap-3 text-center">
         <Database className="w-8 h-8 text-gray-600" />
         <p className="text-sm text-gray-500">Select a dataset to begin comparison</p>
       </div>

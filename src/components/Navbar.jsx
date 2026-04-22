@@ -21,7 +21,7 @@ export default function Navbar() {
       className={[
         'fixed top-0 left-0 right-0 z-[9998]',
         'bg-jscolors-void/80 backdrop-blur-[20px]',
-        scrolled ? 'border-b border-jscolors-rim' : 'border-b border-transparent',
+        scrolled ? 'border-none' : 'border-none',
       ].join(' ')}
     >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">

@@ -30,7 +30,7 @@ export default function App() {
         )}
         <AboutSection />
       </main>
-      <footer className="border-t border-jscolors-rim py-12 text-center text-jscolors-text-muted text-sm font-mono">
+      <footer className="py-12 text-center text-jscolors-text-muted text-sm font-mono">
         FAIRLENS — Open Source AI Fairness Audit Platform · Google Hackathon 2026
       </footer>
     </div>

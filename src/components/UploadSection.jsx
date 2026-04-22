@@ -102,7 +102,7 @@ export default function UploadSection({ onUpload, onAnalysis }) {
               onDragLeave={() => setIsOver(false)}
               onDrop={onDrop}
               className={[
-                'relative cursor-pointer rounded-[24px] border-2 border-dashed bg-jscolors-surface',
+                'relative cursor-pointer rounded-[24px] border-2 border-solid bg-jscolors-surface',
                 'min-h-[280px] px-6 py-10 transition duration-200',
                 isOver
                   ? 'border-jscolors-accent-teal bg-jscolors-elevated scale-[1.02] shadow-[0_0_30px_rgba(124,111,247,0.2)]'

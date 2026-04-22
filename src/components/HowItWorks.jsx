@@ -67,8 +67,7 @@ export default function HowItWorks() {
 
         <div className="relative mt-14">
           <div className="absolute left-5 top-6 bottom-6 hidden w-[calc(100%-40px)] md:block">
-            <div className="h-full w-full border-t border-dashed border-jscolors-accent-violet/40" />
-            <div className="absolute inset-x-0 top-[-1px] h-[1px] bg-gradient-to-r from-jscolors-accent-violet/0 via-jscolors-accent-violet/60 to-jscolors-accent-violet/0" />
+            
           </div>
 
           <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
