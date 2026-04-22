@@ -53,7 +53,18 @@ export default function FileUploader() {
     } catch (err) {
       console.error("Failed:", err)
       setStatus("error")
-      setErrorMsg(err?.response?.data?.detail || "Something went wrong")
+      // FastAPI 422 returns detail as an array of objects [{type, loc, msg, input}]
+      // Convert to a human-readable string — never store raw objects in state
+      const detail = err?.response?.data?.detail
+      if (Array.isArray(detail)) {
+        setErrorMsg(detail.map(d => d?.msg || JSON.stringify(d)).join(" · "))
+      } else if (typeof detail === 'string') {
+        setErrorMsg(detail)
+      } else if (detail && typeof detail === 'object') {
+        setErrorMsg(detail.msg || JSON.stringify(detail))
+      } else {
+        setErrorMsg(err?.message || "Something went wrong")
+      }
     }
   }
 
@@ -140,7 +151,7 @@ export default function FileUploader() {
           <div className="text-lg text-error font-medium mb-1">
             Upload failed
           </div>
-          <div className="text-sm text-error/80">{errorMsg}</div>
+          <div className="text-sm text-error/80">{String(errorMsg ?? '')}</div>
         </div>
       )}
     </div>

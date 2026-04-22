@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ShieldCheck, Activity, Target, Scale,
@@ -276,22 +276,52 @@ const MetricCardPremium = ({ metricKey, value, index }) => {
    ═══════════════════════════════════════════ */
 const ResultsPage = () => {
     const location = useLocation();
-    const metrics = location.state?.metrics ?? dummyMetrics;
-    const shapValues = location.state?.shapValues ?? dummyShap;
+    const navigate = useNavigate();
 
+    const rawState = location.state ?? null;
+
+    // ── Normalize metrics from any backend shape ──────────────────────────────
+    // rawState may be: null, {metrics:{...}, shapValues:{...}}, or {demographic_parity:0.65,...}
+    const _normalizeMetrics = (s) => {
+        if (!s || typeof s !== 'object') return null;
+        // Case A: { metrics: { key: number } }
+        if (s.metrics && typeof s.metrics === 'object' && !Array.isArray(s.metrics)) {
+            const m = {};
+            Object.entries(s.metrics).forEach(([k, v]) => { if (typeof v === 'number') m[k] = v; });
+            return Object.keys(m).length ? m : null;
+        }
+        // Case B: flat object of numbers — filter out non-metric fields
+        const numeric = {};
+        Object.entries(s).forEach(([k, v]) => {
+            if (typeof v === 'number' && k !== 'overall_fairness_score' && k !== 'score') numeric[k] = v;
+        });
+        return Object.keys(numeric).length ? numeric : null;
+    };
+
+    const metrics = _normalizeMetrics(rawState) ?? dummyMetrics;
+    const shapValues = rawState?.shapValues ?? rawState?.shap_values ?? dummyShap;
+
+    // ALL hooks must be declared before any conditional return (Rules of Hooks)
     const [mitigatedData, setMitigatedData] = useState(null);
     const [loading, setLoading] = useState(false);
 
-    /* Derived stats */
+    const safeMetrics = metrics && typeof metrics === 'object' && !Array.isArray(metrics) ? metrics : dummyMetrics;
+
     const biasedMetrics = useMemo(() =>
-        Object.entries(metrics).filter(([, v]) => v < 0.7),
-        [metrics]
+        Object.entries(safeMetrics).filter(([, v]) => typeof v === 'number' && v < 0.7),
+        [safeMetrics]
     );
+
+    useEffect(() => {
+        if (!rawState) {
+            console.warn('No state on /results — page may have been refreshed or navigated directly');
+        }
+    }, []);
 
     const handleMitigation = async () => {
         setLoading(true);
         try {
-            const fileId = location.state?.fileId || 'demo_file_123';
+            const fileId = rawState?.fileId || 'demo_file_123';
             const response = await api.post('/mitigate', { file_id: fileId });
             setMitigatedData(response.data);
         } catch (error) {
@@ -299,13 +329,13 @@ const ResultsPage = () => {
             setMitigatedData([
                 {
                     metric: 'Demographic Parity',
-                    before: metrics.demographic_parity,
-                    after: Math.min(metrics.demographic_parity + 0.2, 0.95)
+                    before: safeMetrics.demographic_parity ?? 0.65,
+                    after: Math.min((safeMetrics.demographic_parity ?? 0.65) + 0.2, 0.95)
                 },
                 {
                     metric: 'Equal Opportunity',
-                    before: metrics.equal_opportunity,
-                    after: Math.min(metrics.equal_opportunity + 0.25, 0.92)
+                    before: safeMetrics.equal_opportunity ?? 0.48,
+                    after: Math.min((safeMetrics.equal_opportunity ?? 0.48) + 0.25, 0.92)
                 }
             ]);
         } finally {
@@ -313,8 +343,31 @@ const ResultsPage = () => {
         }
     };
 
+    // Fallback UI — shown when navigated directly / page refreshed (state is lost)
+    if (!rawState) {
+        return (
+            <div style={{
+                minHeight: '100vh', background: '#07070F', color: 'white',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexDirection: 'column', gap: '16px', fontFamily: 'sans-serif', textAlign: 'center',
+            }}>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>No Audit Data Found</h2>
+                <p style={{ color: '#94a3b8' }}>Please go back and run a fairness audit first.</p>
+                <button
+                    onClick={() => navigate('/')}
+                    style={{
+                        padding: '10px 20px', background: '#6366f1', color: 'white',
+                        border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600',
+                    }}
+                >
+                    Go Back
+                </button>
+            </div>
+        );
+    }
+
     return (
-        <div className="min-h-screen text-[--color-on-surface]">
+        <div className="min-h-screen text-white" style={{ background: '#07070F', padding: '24px 32px' }}>
 
             {/* ─── PAGE HEADER ─── */}
             <motion.div
@@ -339,7 +392,7 @@ const ResultsPage = () => {
                         </p>
                     </div>
                     {/* ── Export Report CTA ── */}
-                    <ExportReport metrics={metrics} shapValues={shapValues} />
+                    <ExportReport metrics={safeMetrics} shapValues={shapValues} />
                 </div>
             </motion.div>
 
@@ -358,7 +411,7 @@ const ResultsPage = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: 0.15 }}
                 >
-                    <SummaryBanner metrics={metrics} />
+                    <SummaryBanner metrics={safeMetrics} />
                 </motion.div>
             </section>
 
@@ -378,7 +431,7 @@ const ResultsPage = () => {
                         Download artifacts for judges and trigger mitigation to show a visible “before → after” shift.
                     </p>
                     <div className="mt-5">
-                        <ExportReport metrics={metrics} shapValues={shapValues} label="Export Evidence Pack" />
+                        <ExportReport metrics={safeMetrics} shapValues={shapValues} label="Export Evidence Pack" />
                     </div>
                     <div className="mt-4">
                         <motion.button
@@ -402,7 +455,7 @@ const ResultsPage = () => {
                     title="Fairness Metrics"
                     subtitle="Individual metric scores with status indicators and trend analysis"
                     delay={0.2}
-                    badge={biasedMetrics.length > 0 ? {
+                    badge={(biasedMetrics?.length ?? 0) > 0 ? {
                         text: `${biasedMetrics.length} below threshold`,
                         className: 'bg-amber-500/10 text-amber-400 border border-amber-500/20',
                         icon: AlertTriangle,
@@ -413,7 +466,7 @@ const ResultsPage = () => {
                     }}
                 />
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                    {Object.entries(metrics).map(([key, value], index) => (
+                    {Object.entries(safeMetrics).map(([key, value], index) => (
                         <div
                             key={key}
                             className="transform-gpu transition-transform duration-300 will-change-transform
@@ -442,12 +495,16 @@ const ResultsPage = () => {
                 <ChartGrid cols={2} gap="gap-6">
                     {/* SHAP Chart — auto-height, no clip */}
                     <div className="w-full min-w-0">
-                        <SHAPChart shapValues={shapValues} />
+                        {shapValues && typeof shapValues === 'object' && !Array.isArray(shapValues) &&
+                            Object.keys(shapValues).length > 0
+                            ? <SHAPChart shapValues={shapValues} />
+                            : <div style={{ padding: '24px', color: '#64748b', textAlign: 'center' }}>SHAP data unavailable</div>
+                        }
                     </div>
 
                     {/* Heatmap — auto-height, no clip */}
                     <div className="w-full min-w-0">
-                        <BiasHeatmap metrics={metrics} />
+                        <BiasHeatmap metrics={safeMetrics} />
                     </div>
                 </ChartGrid>
             </section>

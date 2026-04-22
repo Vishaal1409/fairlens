@@ -1,3 +1,4 @@
+import { Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
 import HowItWorks from './components/HowItWorks'
@@ -7,9 +8,12 @@ import ExplainSection from './components/ExplainSection'
 import MitigationSection from './components/MitigationSection'
 import AboutSection from './components/AboutSection'
 import ScrollProgress from './components/ScrollProgress'
+import ResultsPage from './pages/ResultsPage'
+import ErrorBoundary from './ErrorBoundary'
 import { useState } from 'react'
 
-export default function App() {
+/* ── Landing page (scroll) ── */
+function LandingPage() {
   const [analysisData, setAnalysisData] = useState(null)
   const [fileId, setFileId] = useState(null)
 
@@ -17,7 +21,7 @@ export default function App() {
     <div className="bg-jscolors-void text-jscolors-text-primary min-h-screen font-sans">
       <ScrollProgress />
       <Navbar />
-      <main>
+      <main className="relative z-10">
         <Hero />
         <HowItWorks />
         <UploadSection onUpload={setFileId} onAnalysis={setAnalysisData} />
@@ -36,3 +40,22 @@ export default function App() {
     </div>
   )
 }
+
+/* ── App shell with router ── */
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<ErrorBoundary><LandingPage /></ErrorBoundary>} />
+      <Route
+        path="/results"
+        element={
+          <ErrorBoundary>
+            <ResultsPage />
+          </ErrorBoundary>
+        }
+      />
+      {/* Catch-all → back to landing */}
+      <Route path="*" element={<ErrorBoundary><LandingPage /></ErrorBoundary>} />
+    </Routes>
+  )
+}

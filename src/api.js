@@ -8,11 +8,14 @@ export const uploadFile = (file) => {
   return axios.post(`${BASE}/upload`, form)
 }
 
-export const analyzeFile = (fileId, protectedAttr, targetCol) =>
+export const analyzeFile = (fileId, protectedAttr, targetCol, predictedCol) =>
   axios.post(`${BASE}/analyze`, {
     file_id: fileId,
-    protected_attribute: protectedAttr,
-    target_column: targetCol,
+    protected_col: protectedAttr,
+    label_col: targetCol,
+    predicted_col: predictedCol || targetCol,
+  }, {
+    timeout: 60000, // 60 seconds — ML analysis can be slow
   })
 
 export const explainFile = (fileId, modelId) =>

@@ -40,7 +40,11 @@ export default function Hero() {
   return (
     <section id="top" className="relative min-h-[100vh] bg-transparent pt-16 overflow-hidden z-10">
       <div className="pointer-events-none fixed top-0 left-0 w-[100vw] h-[100vh] z-0">
-        <Canvas camera={{ position: [0, 0, 4.2], fov: 45 }} dpr={[1, 2]}>
+        <Canvas
+          camera={{ position: [0, 0, 4.2], fov: 45 }}
+          dpr={[1, 2]}
+          style={{ pointerEvents: 'none' }}
+        >
           <ambientLight intensity={0.6} />
           <pointLight position={[4, 4, 6]} intensity={1.1} />
           <LensKnot />

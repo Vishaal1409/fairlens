@@ -79,6 +79,16 @@ const CellTooltip = ({ metric, group, score, status, position }) => (
 const BiasHeatmap = ({ metrics }) => {
     const [hovered, setHovered] = useState(null);
     const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+
+    // Guard: metrics must be a non-null object with keys
+    if (!metrics || typeof metrics !== 'object' || Object.keys(metrics).length === 0) {
+        return (
+            <div style={{ padding: '24px', color: '#64748b', textAlign: 'center', background: '#1b1c1d', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                Heatmap data unavailable
+            </div>
+        );
+    }
+
     const metricNames = Object.keys(metrics);
 
     const groupData = metricNames.map((metric) => ({

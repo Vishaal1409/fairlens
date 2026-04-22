@@ -67,26 +67,63 @@ function DonutArc({ value = 0 }) {
 }
 
 export default function ResultsDashboard({ data }) {
+  // ── Normalize the API response ──────────────────────────────────────────
+  // Backend may return:
+  //   A) { demographic_parity: 0.65, equal_opportunity: 0.48, ... }  ← flat object
+  //   B) { metrics: { demographic_parity: 0.65, ... }, overall: 0.7 }
+  //   C) { metrics: [{name, value, ...}], overall: 0.7 }
+  //   D) [ {name, value}, ... ]  ← array at root
+
+  // Detect if data itself is a flat metrics object (has number values, no .metrics key)
+  const isFlat =
+    data && typeof data === 'object' && !Array.isArray(data) &&
+    !data.metrics && !data.metric_scores &&
+    Object.values(data).some(v => typeof v === 'number');
+
+  // Resolve root metrics source
+  const rawMetrics = isFlat
+    ? data
+    : (data?.metrics || data?.metric_scores || null);
+
+  // Convert to array format
+  const fallbackArray = [
+    { name: 'Demographic Parity', value: 0.72, threshold: 0.8, description: 'Outcome parity across groups.' },
+    { name: 'Equalized Odds', value: 0.66, threshold: 0.8, description: 'Equal TPR/FPR across groups.' },
+    { name: 'Disparate Impact', value: 0.74, threshold: 0.8, description: 'Ratio of favorable outcomes.' },
+    { name: 'Equal Opportunity', value: 0.62, threshold: 0.8, description: 'Equal true positive rate.' },
+    { name: 'Theil Index', value: 0.85, threshold: 0.8, description: 'Inequality measure.' },
+    { name: 'Average Odds Diff', value: 0.58, threshold: 0.7, description: 'Avg odds difference.' },
+    { name: 'Statistical Parity Diff', value: 0.61, threshold: 0.7, description: 'SPD difference.' },
+    { name: 'Consistency', value: 0.81, threshold: 0.8, description: 'Local label agreement.' },
+  ];
+
+  const metrics = !rawMetrics
+    ? fallbackArray
+    : Array.isArray(rawMetrics)
+      ? rawMetrics
+      : typeof rawMetrics === 'object'
+        ? Object.entries(rawMetrics)
+            .filter(([, v]) => typeof v === 'number')
+            .map(([key, value]) => ({
+              name: key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+              value,
+              threshold: 0.8,
+              description: '',
+            }))
+        : fallbackArray;
+
+  // Overall score: try explicit fields, then avg of parsed metrics
   const overall = Math.round(
     data?.overall_fairness_score ??
-      data?.overallScore ??
-      data?.score ??
-      72,
-  )
-
-  const metrics =
-    data?.metrics ||
-    data?.metric_scores ||
-    [
-      { name: 'Demographic Parity', value: 0.72, threshold: 0.8, description: 'Outcome parity across groups.' },
-      { name: 'Equalized Odds', value: 0.66, threshold: 0.8, description: 'Equal TPR/FPR across groups.' },
-      { name: 'Disparate Impact', value: 0.74, threshold: 0.8, description: 'Ratio of favorable outcomes.' },
-      { name: 'Equal Opportunity', value: 0.62, threshold: 0.8, description: 'Equal true positive rate.' },
-      { name: 'Theil Index', value: 0.85, threshold: 0.8, description: 'Inequality measure.' },
-      { name: 'Average Odds Diff', value: 0.58, threshold: 0.7, description: 'Avg odds difference.' },
-      { name: 'Statistical Parity Diff', value: 0.61, threshold: 0.7, description: 'SPD difference.' },
-      { name: 'Consistency', value: 0.81, threshold: 0.8, description: 'Local label agreement.' },
-    ]
+    data?.overallScore ??
+    data?.score ??
+    data?.overall ??
+    (isFlat
+      ? Object.values(data).filter(v => typeof v === 'number').reduce((a, b) => a + b, 0) /
+        (Object.values(data).filter(v => typeof v === 'number').length || 1) * 100
+      : 72
+    )
+  );
 
   const normalized = metrics.map((m) => {
     const v = typeof m.value === 'number' && m.value <= 1 ? m.value * 100 : Number(m.value) || 0

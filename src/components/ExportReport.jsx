@@ -15,18 +15,21 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
  * of rows suitable for CSV / PDF table rendering.
  */
 const buildRows = (metrics = {}, shapValues = {}) => {
-  const metricRows = Object.entries(metrics).map(([key, value]) => ({
+  const safeMetrics = metrics && typeof metrics === 'object' ? metrics : {};
+  const safeShap = shapValues && typeof shapValues === 'object' && !Array.isArray(shapValues) ? shapValues : {};
+
+  const metricRows = Object.entries(safeMetrics).map(([key, value]) => ({
     section: 'Fairness Metric',
-    name: key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-    value: typeof value === 'number' ? `${Math.round(value * 100)}%` : String(value),
-    status: value >= 0.7 ? 'Fair' : value >= 0.5 ? 'Warning' : 'Biased',
+    name: String(key).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+    value: typeof value === 'number' ? `${Math.round(value * 100)}%` : String(value ?? 'N/A'),
+    status: typeof value === 'number' ? (value >= 0.7 ? 'Fair' : value >= 0.5 ? 'Warning' : 'Biased') : 'Unknown',
   }));
 
-  const shapRows = Object.entries(shapValues).map(([key, value]) => ({
+  const shapRows = Object.entries(safeShap).map(([key, value]) => ({
     section: 'SHAP Feature Impact',
-    name: key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-    value: typeof value === 'number' ? (value > 0 ? `+${value.toFixed(3)}` : value.toFixed(3)) : String(value),
-    status: value >= 0 ? 'Positive' : 'Negative',
+    name: String(key).replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+    value: typeof value === 'number' ? (value > 0 ? `+${value.toFixed(3)}` : value.toFixed(3)) : String(value ?? 'N/A'),
+    status: typeof value === 'number' ? (value >= 0 ? 'Positive' : 'Negative') : 'Unknown',
   }));
 
   return [...metricRows, ...shapRows];

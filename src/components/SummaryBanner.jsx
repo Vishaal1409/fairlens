@@ -75,6 +75,7 @@ const InfoChip = ({ icon: Icon, label, value }) => (
    SUMMARY BANNER — Hero Panel
    ═══════════════════════════════════════ */
 const SummaryBanner = ({ metrics }) => {
+    if (!metrics || typeof metrics !== 'object') return null;
     const scores = Object.values(metrics);
     if (scores.length === 0) return null;
 

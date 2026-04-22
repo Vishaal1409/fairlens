@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { analyzeFile, uploadFile } from '../api'
 
 function uniq(arr) {
@@ -7,6 +8,7 @@ function uniq(arr) {
 }
 
 export default function UploadSection({ onUpload, onAnalysis }) {
+  const navigate = useNavigate()
   const inputRef = useRef(null)
   const [file, setFile] = useState(null)
   const [fileMeta, setFileMeta] = useState(null)
@@ -50,7 +52,8 @@ export default function UploadSection({ onUpload, onAnalysis }) {
         setTargetCol(cols[1] || cols[0] || '')
       }
     } catch (e) {
-      setError(e?.response?.data?.detail || e?.message || 'Upload failed')
+      const d = e?.response?.data?.detail
+      setError(Array.isArray(d) ? d.map(x => x?.msg || String(x)).join(' · ') : (typeof d === 'string' ? d : e?.message || 'Upload failed'))
     } finally {
       setUploading(false)
     }
@@ -70,12 +73,43 @@ export default function UploadSection({ onUpload, onAnalysis }) {
     if (!protectedAttr || !targetCol) return setError('Select protected attribute and target column.')
 
     setAnalyzing(true)
+
+    // 60-second timeout — prevents infinite spinner if backend is slow
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 60000)
+
     try {
       const res = await analyzeFile(id, protectedAttr, targetCol)
+      clearTimeout(timeoutId)
       const data = res.data ?? res
+
+      console.log('[FairLens] Analyze response:', data)
+
+      // Also call the inline callback (keeps backward compat)
       onAnalysis?.(data)
+
+      // Navigate to dedicated results page with the data
+      navigate('/results', {
+        state: {
+          metrics: data?.metrics ?? data,
+          shapValues: data?.shap_values ?? data?.shapValues ?? null,
+          fileId: id,
+        },
+      })
     } catch (e) {
-      setError(e?.response?.data?.detail || e?.message || 'Analysis failed')
+      clearTimeout(timeoutId)
+      if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') {
+        setError('Request timed out after 60 seconds. The backend may be overloaded — try again.')
+      } else {
+        const d = e?.response?.data?.detail
+        setError(
+          Array.isArray(d)
+            ? d.map(x => x?.msg || String(x)).join(' · ')
+            : typeof d === 'string'
+            ? d
+            : e?.message || 'Analysis failed. Check the server is running.'
+        )
+      }
     } finally {
       setAnalyzing(false)
     }
@@ -226,7 +260,7 @@ export default function UploadSection({ onUpload, onAnalysis }) {
 
             {error && (
               <div className="mt-4 rounded-2xl border border-jscolors-accent-red/40 bg-jscolors-surface px-4 py-3 text-sm text-jscolors-text-secondary">
-                <span className="font-mono text-jscolors-accent-red">ERROR</span> — {error}
+                <span className="font-mono text-jscolors-accent-red">ERROR</span> — {String(error ?? '')}
               </div>
             )}
           </div>

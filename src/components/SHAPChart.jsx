@@ -50,6 +50,15 @@ const CustomTooltip = ({ active, payload, label }) => {
    SHAP CHART — Data Story Panel
    ═══════════════════════════════════════ */
 const SHAPChart = ({ shapValues }) => {
+    // Guard: shapValues must be a non-null plain object with at least one key
+    if (!shapValues || typeof shapValues !== 'object' || Array.isArray(shapValues) || Object.keys(shapValues).length === 0) {
+        return (
+            <div style={{ padding: '24px', color: '#64748b', textAlign: 'center', background: '#1b1c1d', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                SHAP data unavailable
+            </div>
+        );
+    }
+
     const data = Object.entries(shapValues)
         .map(([feature, value]) => ({
             feature: feature.replace(/_/g, ' '),
