@@ -3,13 +3,11 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
-  base: "/fairlens/",   // 🔥 ADD THIS LINE
-
+  base: '/fairlens/',   // ✅ THIS IS IMPORTANT
   build: {
     outDir: 'dist',
     chunkSizeWarningLimit: 1000,
   },
-
   plugins: [
     react(),
     tailwindcss(),
