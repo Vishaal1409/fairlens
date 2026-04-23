@@ -8,6 +8,8 @@ import ExplainSection from './components/ExplainSection'
 import MitigationSection from './components/MitigationSection'
 import AboutSection from './components/AboutSection'
 import ScrollProgress from './components/ScrollProgress'
+import GrainOverlay from './components/GrainOverlay'
+import FrameMarks from './components/FrameMarks'
 import ResultsPage from './pages/ResultsPage'
 import ErrorBoundary from './ErrorBoundary'
 import { useState } from 'react'
@@ -18,44 +20,69 @@ function LandingPage() {
   const [fileId, setFileId] = useState(null)
 
   return (
-    <div className="bg-jscolors-void text-jscolors-text-primary min-h-screen font-sans">
-      <ScrollProgress />
-      <Navbar />
-      <main className="relative z-10">
-        <Hero />
-        <HowItWorks />
-        <UploadSection onUpload={setFileId} onAnalysis={setAnalysisData} />
-        {analysisData && (
-          <>
-            <ResultsDashboard data={analysisData} />
-            <ExplainSection fileId={fileId} />
-            <MitigationSection fileId={fileId} />
-          </>
-        )}
-        <AboutSection />
-      </main>
-      <footer className="py-12 text-center text-jscolors-text-muted text-sm font-mono">
-        FAIRLENS — Open Source AI Fairness Audit Platform · Google Hackathon 2026
-      </footer>
-    </div>
+    <main className="relative z-10">
+      <Hero />
+      <HowItWorks />
+      <UploadSection onUpload={setFileId} onAnalysis={setAnalysisData} />
+      {analysisData && (
+        <>
+          <ResultsDashboard data={analysisData} />
+          <ExplainSection fileId={fileId} />
+          <MitigationSection fileId={fileId} />
+        </>
+      )}
+      <AboutSection />
+    </main>
   )
 }
 
-/* ── App shell with router ── */
+/* ── Shared footer ── */
+function SiteFooter() {
+  return (
+    <footer className="relative z-10 border-t border-white/5 py-16">
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
+          <div>
+            <div className="font-display text-4xl text-obs-text">
+              Fair<span className="italic text-obs-lumen">Lens</span>
+              <span className="text-obs-cerulean">.</span>
+            </div>
+            <div className="mt-3 max-w-sm font-mono text-[11px] tracking-[0.2em] uppercase text-obs-dim">
+              An editorial-grade fairness instrument for production machine learning
+            </div>
+          </div>
+          <div className="flex items-center gap-6 font-mono text-[10px] tracking-[0.28em] uppercase text-obs-dim">
+            <span>OSS · MIT</span>
+            <span>Build 2026.04</span>
+            <span>Google Hackathon 2026</span>
+          </div>
+        </div>
+      </div>
+    </footer>
+  )
+}
+
+/* ── App shell ── Navbar, overlays, routes, footer ── */
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<ErrorBoundary><LandingPage /></ErrorBoundary>} />
-      <Route
-        path="/results"
-        element={
-          <ErrorBoundary>
-            <ResultsPage />
-          </ErrorBoundary>
-        }
-      />
-      {/* Catch-all → back to landing */}
-      <Route path="*" element={<ErrorBoundary><LandingPage /></ErrorBoundary>} />
-    </Routes>
+    <div className="relative min-h-screen text-obs-text font-sans">
+      <ScrollProgress />
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<ErrorBoundary><LandingPage /></ErrorBoundary>} />
+        <Route
+          path="/results"
+          element={
+            <ErrorBoundary>
+              <ResultsPage />
+            </ErrorBoundary>
+          }
+        />
+        <Route path="*" element={<ErrorBoundary><LandingPage /></ErrorBoundary>} />
+      </Routes>
+      <SiteFooter />
+      <GrainOverlay />
+      <FrameMarks />
+    </div>
   )
-}
+}

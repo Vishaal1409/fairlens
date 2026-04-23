@@ -1,9 +1,5 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import {
-    BarChart, Bar, XAxis, YAxis, CartesianGrid,
-    Tooltip, ResponsiveContainer, Cell, ReferenceLine
-} from 'recharts';
 import { Sparkles, TrendingUp, TrendingDown } from 'lucide-react';
 
 /* ── Custom Tooltip ── */
@@ -27,19 +23,19 @@ const CustomTooltip = ({ active, payload, label }) => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span style={{
                     width: '6px', height: '6px', borderRadius: '50%',
-                    backgroundColor: isPositive ? '#1D9E75' : '#E24B4A',
-                    boxShadow: `0 0 6px ${isPositive ? '#1D9E7560' : '#E24B4A60'}`,
+                    backgroundColor: isPositive ? '#5BC0EB' : '#FF6E6E',
+                    boxShadow: `0 0 6px ${isPositive ? '#5BC0EB60' : '#FF6E6E60'}`,
                     flexShrink: 0,
                 }} />
                 <span style={{
                     fontSize: '11px',
-                    color: isPositive ? '#1D9E75' : '#E24B4A',
+                    color: isPositive ? '#5BC0EB' : '#FF6E6E',
                     fontWeight: 600,
                 }}>
                     SHAP: {value > 0 ? '+' : ''}{value.toFixed(3)}
                 </span>
             </div>
-            <p style={{ fontSize: '10px', color: '#888780', margin: '6px 0 0', lineHeight: 1.4 }}>
+            <p style={{ fontSize: '10px', color: '#8B93A8', margin: '6px 0 0', lineHeight: 1.4 }}>
                 {isPositive ? 'Pushes prediction higher' : 'Pushes prediction lower'}
             </p>
         </div>
@@ -53,7 +49,7 @@ const SHAPChart = ({ shapValues }) => {
     // Guard: shapValues must be a non-null plain object with at least one key
     if (!shapValues || typeof shapValues !== 'object' || Array.isArray(shapValues) || Object.keys(shapValues).length === 0) {
         return (
-            <div style={{ padding: '24px', color: '#64748b', textAlign: 'center', background: '#1b1c1d', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="glass rounded-3xl p-10 text-center font-mono text-[11px] uppercase tracking-[0.3em] text-obs-dim">
                 SHAP data unavailable
             </div>
         );
@@ -76,25 +72,23 @@ const SHAPChart = ({ shapValues }) => {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="relative bg-[#1b1c1d] border border-white/[0.06] rounded-2xl overflow-hidden
-                       transition-all duration-300 hover:border-white/[0.1]
-                       hover:shadow-[0_8px_32px_-8px_rgba(107,47,191,0.1)]"
+            className="glass frame-mark relative rounded-3xl overflow-hidden transition-all duration-300"
         >
             {/* Top accent line */}
-            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#6b2fbf]/30 to-transparent" />
+            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#5BC0EB]/30 to-transparent" />
 
             <div className="p-6 sm:p-8">
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
                     <div className="flex items-start gap-3">
-                        <div className="p-2.5 rounded-xl bg-[#6b2fbf]/10 border border-[#6b2fbf]/20 flex-shrink-0">
-                            <Sparkles size={16} className="text-[#6b2fbf]" />
+                        <div className="p-2.5 rounded-xl bg-[#5BC0EB]/10 border border-[#5BC0EB]/20 flex-shrink-0">
+                            <Sparkles size={16} className="text-[#5BC0EB]" />
                         </div>
                         <div>
                             <h3 className="text-[16px] font-semibold text-white tracking-tight mb-0.5">
                                 Feature Importance (SHAP)
                             </h3>
-                            <p className="text-[12px] text-[#888780] leading-relaxed">
+                            <p className="text-[12px] text-[#8B93A8] leading-relaxed">
                                 How each feature influences model decisions — ranked by impact magnitude
                             </p>
                         </div>
@@ -116,63 +110,67 @@ const SHAPChart = ({ shapValues }) => {
                 {/* Divider */}
                 <div className="h-px bg-white/[0.05] mb-6" />
 
-                {/* Chart */}
-                <ResponsiveContainer width="100%" height={360}>
-                    <BarChart
-                        data={data}
-                        layout="vertical"
-                        margin={{ top: 0, right: 32, left: 12, bottom: 0 }}
-                    >
-                        <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="rgba(255,255,255,0.03)"
-                            horizontal={false}
-                        />
-                        <ReferenceLine
-                            x={0}
-                            stroke="rgba(255,255,255,0.08)"
-                            strokeWidth={1}
-                        />
-                        <XAxis
-                            type="number"
-                            tick={{ fontSize: 10, fill: '#888780', fontFamily: 'Inter' }}
-                            axisLine={false}
-                            tickLine={false}
-                            tickFormatter={(v) => v.toFixed(2)}
-                        />
-                        <YAxis
-                            type="category"
-                            dataKey="feature"
-                            tick={{ fontSize: 12, fill: '#cac4d0', fontFamily: 'Inter', fontWeight: 500 }}
-                            axisLine={false}
-                            tickLine={false}
-                            width={120}
-                        />
-                        <Tooltip
-                            content={<CustomTooltip />}
-                            cursor={{ fill: 'rgba(255,255,255,0.02)', radius: 4 }}
-                        />
-                        <Bar dataKey="value" radius={[0, 6, 6, 0]} maxBarSize={22}>
-                            {data.map((entry, index) => (
-                                <Cell
-                                    key={index}
-                                    fill={entry.value >= 0 ? '#1D9E75' : '#E24B4A'}
-                                    fillOpacity={0.8}
+                {/* Chart — custom spring-animated bars */}
+                <div className="space-y-2.5">
+                    {data.map((entry, i) => {
+                        const isPos = entry.value >= 0;
+                        const barColor = isPos ? '#6366f1' : '#f43f5e';
+                        const absMax = Math.max(...data.map(d => d.absValue));
+                        const widthPct = (entry.absValue / absMax) * 100;
+                        return (
+                            <div key={entry.feature} className="flex items-center gap-3 group/bar">
+                                {/* Feature label */}
+                                <div className="w-28 flex-shrink-0 text-right">
+                                    <span className="text-[11px] font-medium text-[#E8EAF0] capitalize leading-tight">
+                                        {entry.feature}
+                                    </span>
+                                </div>
+
+                                {/* Zero line + bar track */}
+                                <div className="flex-1 relative h-7 flex items-center">
+                                    {/* Track */}
+                                    <div className="absolute inset-0 rounded-full bg-white/[0.04]" />
+                                    {/* Animated bar */}
+                                    <motion.div
+                                        initial={{ width: 0 }}
+                                        whileInView={{ width: `${widthPct}%` }}
+                                        viewport={{ once: true }}
+                                        transition={{ type: 'spring', stiffness: 80, damping: 18, delay: i * 0.06 }}
+                                        className="absolute left-0 top-1 bottom-1 rounded-full"
+                                        style={{
+                                            backgroundColor: barColor,
+                                            opacity: 0.82,
+                                            boxShadow: `0 0 10px ${barColor}40`,
+                                        }}
+                                    />
+                                    {/* Value label */}
+                                    <span
+                                        className="absolute right-2 text-[10px] font-mono font-semibold z-10"
+                                        style={{ color: barColor }}
+                                    >
+                                        {entry.value > 0 ? '+' : ''}{entry.value.toFixed(3)}
+                                    </span>
+                                </div>
+
+                                {/* Direction dot */}
+                                <div
+                                    className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                                    style={{ backgroundColor: barColor, boxShadow: `0 0 6px ${barColor}` }}
                                 />
-                            ))}
-                        </Bar>
-                    </BarChart>
-                </ResponsiveContainer>
+                            </div>
+                        );
+                    })}
+                </div>
 
                 {/* Insight callout */}
                 <div className="mt-6 p-4 rounded-xl bg-white/[0.02] border border-white/[0.05]">
-                    <p className="text-[11.5px] text-[#888780] leading-[1.7]">
-                        <span className="text-[#cac4d0] font-medium">Key Insight: </span>
-                        <span className="capitalize font-medium" style={{ color: data[0]?.value >= 0 ? '#1D9E75' : '#E24B4A' }}>
+                    <p className="text-[11.5px] text-[#8B93A8] leading-[1.7]">
+                        <span className="text-[#E8EAF0] font-medium">Key Insight: </span>
+                        <span className="capitalize font-medium" style={{ color: data[0]?.value >= 0 ? '#6366f1' : '#f43f5e' }}>
                             {data[0]?.feature}
                         </span>
                         {' '}has the strongest influence on model predictions with a SHAP value of{' '}
-                        <span className="font-mono text-[#cac4d0]">
+                        <span className="font-mono text-[#E8EAF0]">
                             {data[0]?.value > 0 ? '+' : ''}{data[0]?.value?.toFixed(3)}
                         </span>.
                         Features with negative values push predictions toward unfavorable outcomes for certain groups.

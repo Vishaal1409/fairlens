@@ -1,673 +1,696 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useMemo, useEffect } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
-    ShieldCheck, Activity, Target, Scale,
-    Sparkles, ChevronRight, Loader2, TrendingUp, TrendingDown,
-    BarChart3, Flame, Zap, AlertTriangle, ArrowUpRight,
-    CheckCircle2
-} from 'lucide-react';
-import BiasHeatmap from '../components/BiasHeatmap';
-import SummaryBanner from '../components/SummaryBanner';
-import SHAPChart from '../components/SHAPChart';
-import BeforeAfterChart from '../components/BeforeAfterChart';
-import ExportReport from '../components/ExportReport';
-import ChartContainer, { ChartGrid } from '../components/ChartContainer';
-import { api } from '../api/client';
+  ShieldCheck, Activity, Target, Scale,
+  Sparkles, ChevronRight, Loader2, TrendingUp,
+  Flame, Zap, AlertTriangle,
+  CheckCircle2, ArrowLeft, BarChart3,
+} from 'lucide-react'
+import BiasHeatmap from '../components/BiasHeatmap'
+import SummaryBanner from '../components/SummaryBanner'
+import SHAPChart from '../components/SHAPChart'
+import BeforeAfterChart from '../components/BeforeAfterChart'
+import ExportReport from '../components/ExportReport'
+import { ChartGrid } from '../components/ChartContainer'
+import { api } from '../api'
 
-/* ═══════════════════════════════════════════
+/* ─────────────────────────────────────────────
    FALLBACK DATA
-   ═══════════════════════════════════════════ */
+   ───────────────────────────────────────────── */
 const dummyMetrics = {
-    accuracy: 0.82,
-    demographic_parity: 0.65,
-    equal_opportunity: 0.48,
-    disparate_impact: 0.71
-};
+  accuracy: 0.82,
+  demographic_parity: 0.65,
+  equal_opportunity: 0.48,
+  disparate_impact: 0.71,
+}
 
 const dummyShap = {
-    age: 0.42, income: 0.31, gender: -0.18,
-    education: 0.27, race: -0.35, hours_per_week: 0.19,
-    occupation: 0.22, marital_status: -0.11,
-    relationship: 0.08, country: -0.05
-};
+  age: 0.42, income: 0.31, gender: -0.18,
+  education: 0.27, race: -0.35, hours_per_week: 0.19,
+  occupation: 0.22, marital_status: -0.11,
+  relationship: 0.08, country: -0.05,
+}
 
-/* ═══════════════════════════════════════════
+/* ─────────────────────────────────────────────
    METRIC METADATA
-   ═══════════════════════════════════════════ */
+   ───────────────────────────────────────────── */
 const metricMeta = {
-    accuracy: {
-        label: 'Accuracy',
-        icon: Target,
-        explanation: 'How often the model makes the correct prediction overall.',
-        threshold: 0.8,
-    },
-    demographic_parity: {
-        label: 'Demographic Parity',
-        icon: Scale,
-        explanation: 'Ensures the model approves different groups at equal rates regardless of protected attributes.',
-        threshold: 0.7,
-    },
-    equal_opportunity: {
-        label: 'Equal Opportunity',
-        icon: ShieldCheck,
-        explanation: 'Ensures qualified candidates from all groups have the same chance of a positive outcome.',
-        threshold: 0.7,
-    },
-    disparate_impact: {
-        label: 'Disparate Impact',
-        icon: Activity,
-        explanation: 'A ratio checking if a specific group is significantly disadvantaged compared to others.',
-        threshold: 0.8,
-    },
-    disperate_impact: {
-        label: 'Disparate Impact',
-        icon: Activity,
-        explanation: 'A ratio checking if a specific group is significantly disadvantaged compared to others.',
-        threshold: 0.8,
-    },
-};
+  accuracy: {
+    label: 'Accuracy',
+    icon: Target,
+    explanation: 'How often the model makes the correct prediction overall.',
+    threshold: 0.8,
+  },
+  demographic_parity: {
+    label: 'Demographic Parity',
+    icon: Scale,
+    explanation: 'Approval rates are equal across protected groups.',
+    threshold: 0.7,
+  },
+  equal_opportunity: {
+    label: 'Equal Opportunity',
+    icon: ShieldCheck,
+    explanation: 'Qualified candidates have equal chance of a positive outcome.',
+    threshold: 0.7,
+  },
+  disparate_impact: {
+    label: 'Disparate Impact',
+    icon: Activity,
+    explanation: 'Ratio of favourable outcomes between groups.',
+    threshold: 0.8,
+  },
+  disperate_impact: {
+    label: 'Disparate Impact',
+    icon: Activity,
+    explanation: 'Ratio of favourable outcomes between groups.',
+    threshold: 0.8,
+  },
+}
 
-/* ═══════════════════════════════════════════
-   STATUS HELPERS
-   ═══════════════════════════════════════════ */
+/* ─────────────────────────────────────────────
+   STATUS (new palette: aurora / lumen / signal)
+   ───────────────────────────────────────────── */
 const getStatus = (score) => {
-    if (score >= 0.7) return {
-        label: 'Fair', color: '#1D9E75',
-        bgClass: 'bg-emerald-500/10', textClass: 'text-emerald-400',
-        borderClass: 'border-emerald-500/20'
-    };
-    if (score >= 0.5) return {
-        label: 'Warning', color: '#EF9F27',
-        bgClass: 'bg-amber-500/10', textClass: 'text-amber-400',
-        borderClass: 'border-amber-500/20'
-    };
-    return {
-        label: 'Biased', color: '#E24B4A',
-        bgClass: 'bg-rose-500/10', textClass: 'text-rose-400',
-        borderClass: 'border-rose-500/20'
-    };
-};
+  if (score >= 0.7) return {
+    label: 'Fair',
+    accent: '#6EE7C4',
+    bgClass: 'bg-[#6EE7C4]/10',
+    textClass: 'text-[#6EE7C4]',
+    borderClass: 'border-[#6EE7C4]/25',
+    icon: CheckCircle2,
+  }
+  if (score >= 0.5) return {
+    label: 'Warning',
+    accent: '#E8D5A8',
+    bgClass: 'bg-[#E8D5A8]/10',
+    textClass: 'text-[#E8D5A8]',
+    borderClass: 'border-[#E8D5A8]/25',
+    icon: AlertTriangle,
+  }
+  return {
+    label: 'Biased',
+    accent: '#FF6E6E',
+    bgClass: 'bg-[#FF6E6E]/10',
+    textClass: 'text-[#FF6E6E]',
+    borderClass: 'border-[#FF6E6E]/25',
+    icon: Zap,
+  }
+}
 
-/* ═══════════════════════════════════════════
-   MINI SPARKLINE (SVG)
-   ═══════════════════════════════════════════ */
+/* ─────────────────────────────────────────────
+   MINI SPARKLINE
+   ───────────────────────────────────────────── */
 const MiniSparkline = ({ value, color }) => {
-    /* Generate a plausible micro-trend from a single value */
-    const seed = Math.round(value * 1000);
-    const points = Array.from({ length: 8 }, (_, i) => {
-        const noise = Math.sin(seed + i * 1.7) * 0.12;
-        const trend = (i / 7) * 0.1;
-        return Math.max(0, Math.min(1, value - 0.15 + trend + noise));
-    });
-    points.push(value); // final point is the actual value
+  const seed = Math.round(value * 1000)
+  const points = Array.from({ length: 8 }, (_, i) => {
+    const noise = Math.sin(seed + i * 1.7) * 0.12
+    const trend = (i / 7) * 0.1
+    return Math.max(0, Math.min(1, value - 0.15 + trend + noise))
+  })
+  points.push(value)
 
-    const w = 80, h = 24;
-    const maxVal = Math.max(...points);
-    const minVal = Math.min(...points);
-    const range = maxVal - minVal || 0.1;
+  const w = 80, h = 24
+  const maxVal = Math.max(...points)
+  const minVal = Math.min(...points)
+  const range = maxVal - minVal || 0.1
 
-    const pathData = points
-        .map((p, i) => {
-            const x = (i / (points.length - 1)) * w;
-            const y = h - ((p - minVal) / range) * (h - 4) - 2;
-            return `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`;
-        })
-        .join(' ');
+  const pathData = points
+    .map((p, i) => {
+      const x = (i / (points.length - 1)) * w
+      const y = h - ((p - minVal) / range) * (h - 4) - 2
+      return `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`
+    })
+    .join(' ')
 
-    /* Gradient fill area */
-    const lastX = w;
-    const areaPath = `${pathData} L ${lastX} ${h} L 0 ${h} Z`;
+  const areaPath = `${pathData} L ${w} ${h} L 0 ${h} Z`
+  const safeId = color.replace('#', '')
 
-    return (
-        <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="overflow-visible">
-            <defs>
-                <linearGradient id={`spark-${color.replace('#', '')}`} x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor={color} stopOpacity="0.2" />
-                    <stop offset="100%" stopColor={color} stopOpacity="0" />
-                </linearGradient>
-            </defs>
-            <path d={areaPath} fill={`url(#spark-${color.replace('#', '')})`} />
-            <path d={pathData} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.8" />
-            {/* End dot */}
-            <circle
-                cx={w}
-                cy={h - ((value - minVal) / range) * (h - 4) - 2}
-                r="2"
-                fill={color}
-                style={{ filter: `drop-shadow(0 0 3px ${color})` }}
-            />
-        </svg>
-    );
-};
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="overflow-visible">
+      <defs>
+        <linearGradient id={`spark-${safeId}`} x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.22" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={areaPath} fill={`url(#spark-${safeId})`} />
+      <path d={pathData} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.85" />
+      <circle cx={w} cy={h - ((value - minVal) / range) * (h - 4) - 2} r="2" fill={color} style={{ filter: `drop-shadow(0 0 3px ${color})` }} />
+    </svg>
+  )
+}
 
-/* ═══════════════════════════════════════════
-   SECTION HEADER
-   ═══════════════════════════════════════════ */
-const SectionHeader = ({ icon: Icon, title, subtitle, badge, delay = 0 }) => (
-    <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay }}
-        className="mb-6"
-    >
-        <div className="flex items-center gap-3 mb-1.5">
-            <div className="p-2 rounded-xl bg-[#6b2fbf]/10 border border-[#6b2fbf]/20">
-                <Icon size={16} className="text-[#6b2fbf]" />
-            </div>
-            <h2 className="text-lg font-semibold text-white tracking-tight">{title}</h2>
-            {badge && (
-                <span className={`ml-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold ${badge.className}`}>
-                    {badge.icon && <badge.icon size={10} />}
-                    {badge.text}
-                </span>
-            )}
-        </div>
-        {subtitle && (
-            <p className="text-[13px] text-[#888780] ml-[44px]">{subtitle}</p>
-        )}
-    </motion.div>
-);
+/* ─────────────────────────────────────────────
+   ANIMATED NUMBER
+   ───────────────────────────────────────────── */
+function useAnimatedNumber(target, duration = 1400, delay = 0) {
+  const [display, setDisplay] = useState(0)
+  useEffect(() => {
+    let raf
+    const timer = setTimeout(() => {
+      const start = performance.now()
+      const step = (now) => {
+        const elapsed = now - start
+        const progress = Math.min(elapsed / duration, 1)
+        const eased = 1 - Math.pow(1 - progress, 3)
+        setDisplay(Math.round(eased * target))
+        if (progress < 1) raf = requestAnimationFrame(step)
+      }
+      raf = requestAnimationFrame(step)
+    }, delay)
+    return () => { clearTimeout(timer); cancelAnimationFrame(raf) }
+  }, [target, duration, delay])
+  return display
+}
 
-/* ═══════════════════════════════════════════
-   PREMIUM METRIC CARD (with sparkline)
-   ═══════════════════════════════════════════ */
+/* ─────────────────────────────────────────────
+   SECTION HEADER — editorial
+   ───────────────────────────────────────────── */
+const SectionHeader = ({ num, label, title, delay = 0 }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 14 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true, amount: 0.4 }}
+    transition={{ duration: 0.6, delay, ease: [0.16, 1, 0.3, 1] }}
+    className="mb-8 flex items-end justify-between"
+  >
+    <div>
+      <div className="flex items-center gap-3">
+        <span className="h-px w-10 bg-obs-cerulean/70" />
+        <span className="section-label">§ {num} · {label}</span>
+      </div>
+      <h2 className="h-display mt-4 text-[36px] leading-[1.02] text-obs-text md:text-[48px]">
+        {title}
+      </h2>
+    </div>
+  </motion.div>
+)
+
+/* ─────────────────────────────────────────────
+   METRIC CARD — editorial glass
+   ───────────────────────────────────────────── */
 const MetricCardPremium = ({ metricKey, value, index }) => {
-    const meta = metricMeta[metricKey] || {
-        label: metricKey.replace(/_/g, ' '),
-        icon: Activity,
-        explanation: 'Metric evaluation score.',
-        threshold: 0.7,
-    };
-    const status = getStatus(value);
-    const Icon = meta.icon;
-    const pct = Math.round(value * 100);
-    const isAboveThreshold = value >= (meta.threshold || 0.7);
+  const meta = metricMeta[metricKey] || {
+    label: metricKey.replace(/_/g, ' '),
+    icon: Activity,
+    explanation: 'Metric evaluation score.',
+    threshold: 0.7,
+  }
+  const status = getStatus(value)
+  const Icon = meta.icon
+  const StatusIcon = status.icon
+  const pct = Math.round(value * 100)
+  const isAboveThreshold = value >= (meta.threshold || 0.7)
+  const animatedPct = useAnimatedNumber(pct, 1400, 200 + index * 80)
 
-    return (
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 22, filter: 'blur(8px)' }}
+      whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+      viewport={{ once: true, amount: 0.3 }}
+      transition={{ duration: 0.7, delay: index * 0.06, ease: [0.16, 1, 0.3, 1] }}
+      whileHover={{ y: -3 }}
+      className="glass frame-mark group relative overflow-hidden rounded-2xl p-6"
+    >
+      {/* Top hairline accent */}
+      <span
+        aria-hidden="true"
+        className="absolute top-0 left-6 right-6 h-px"
+        style={{ background: `linear-gradient(90deg, transparent, ${status.accent}80, transparent)` }}
+      />
+
+      {/* Top row — icon + status pill */}
+      <div className="flex items-start justify-between">
+        <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03]">
+          <Icon size={16} className="text-obs-dim transition-colors group-hover:text-obs-cerulean" />
+        </span>
+        <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.22em] ${status.bgClass} ${status.textClass} ${status.borderClass}`}>
+          <StatusIcon size={10} />
+          {status.label}
+        </span>
+      </div>
+
+      {/* Label */}
+      <p className="mt-6 font-mono text-[10px] uppercase tracking-[0.3em] text-obs-dim">
+        {meta.label}
+      </p>
+
+      {/* Score */}
+      <div className="mt-2 flex items-end justify-between">
+        <div className="flex items-baseline gap-1">
+          <span className="num-display text-[46px] leading-none text-obs-text tabular">
+            {animatedPct}
+          </span>
+          <span className="pb-1 text-[14px] text-obs-dim">%</span>
+        </div>
+        <MiniSparkline value={value} color={status.accent} />
+      </div>
+
+      {/* Progress track */}
+      <div className="mt-5 h-[2px] rounded-full bg-white/[0.06] overflow-hidden">
         <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 + index * 0.08 }}
-            whileHover={{ y: -4, transition: { duration: 0.25 } }}
-            className="group relative bg-[#1b1c1d] border border-white/[0.06] rounded-2xl p-6
-                       hover:border-white/[0.12] transition-all duration-300 cursor-default
-                       hover:shadow-[0_12px_40px_-8px_rgba(107,47,191,0.18)]"
-        >
-            {/* Top accent line */}
-            <div
-                className="absolute top-0 left-4 right-4 h-[1px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                style={{ background: `linear-gradient(to right, transparent, ${status.color}60, transparent)` }}
-            />
+          initial={{ width: 0 }}
+          whileInView={{ width: `${pct}%` }}
+          viewport={{ once: true }}
+          transition={{ duration: 1.2, delay: 0.25 + index * 0.08, ease: [0.25, 0.46, 0.45, 0.94] }}
+          className="h-full rounded-full"
+          style={{ background: status.accent, boxShadow: `0 0 8px ${status.accent}40` }}
+        />
+      </div>
 
-            {/* Top: icon + status badge */}
-            <div className="flex items-start justify-between mb-5">
-                <div className="p-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06]
-                                group-hover:bg-[#6b2fbf]/10 group-hover:border-[#6b2fbf]/20
-                                transition-all duration-300">
-                    <Icon size={18} className="text-[#888780] group-hover:text-[#6b2fbf] transition-colors duration-300" />
-                </div>
-                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold border ${status.bgClass} ${status.textClass} ${status.borderClass}`}>
-                    <span
-                        className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: status.color, boxShadow: `0 0 6px ${status.color}60` }}
-                    />
-                    {status.label}
-                </span>
-            </div>
+      {/* Explanation */}
+      <p className="mt-5 text-[12px] leading-[1.7] text-obs-dim">
+        {meta.explanation}
+      </p>
 
-            {/* Label */}
-            <p className="text-[10px] text-[#888780] uppercase tracking-[0.12em] font-semibold mb-2">
-                {meta.label}
-            </p>
+      {/* Threshold hairline */}
+      <div className="mt-5 flex items-center justify-between border-t border-white/6 pt-3 font-mono text-[10px] uppercase tracking-[0.22em]">
+        <span className="text-obs-ghost">Threshold</span>
+        <span className={isAboveThreshold ? 'text-[#6EE7C4]' : 'text-[#E8D5A8]'}>
+          {isAboveThreshold ? '✓' : '!'} {Math.round((meta.threshold || 0.7) * 100)}%
+        </span>
+      </div>
+    </motion.div>
+  )
+}
 
-            {/* Score + Sparkline row */}
-            <div className="flex items-end justify-between mb-4">
-                <div className="flex items-baseline gap-1">
-                    <span className="text-[34px] font-bold text-white tracking-tight leading-none">
-                        {pct}
-                    </span>
-                    <span className="text-[14px] text-[#888780] font-medium">%</span>
-                </div>
-                <div className="sparkline-container pb-1">
-                    <MiniSparkline value={value} color={status.color} />
-                </div>
-            </div>
-
-            {/* Progress track */}
-            <div className="h-1.5 rounded-full bg-white/[0.06] mb-4 overflow-hidden">
-                <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${pct}%` }}
-                    transition={{ duration: 1.2, delay: 0.3 + index * 0.1, ease: [0.25, 0.46, 0.45, 0.94] }}
-                    className="h-full rounded-full relative"
-                    style={{
-                        backgroundColor: status.color,
-                        boxShadow: `0 0 8px ${status.color}40`,
-                    }}
-                />
-            </div>
-
-            {/* Explanation */}
-            <div className="pt-3 border-t border-white/[0.05]">
-                <p className="text-[11px] text-[#888780] leading-[1.7]">
-                    {meta.explanation}
-                </p>
-            </div>
-
-            {/* Threshold indicator */}
-            <div className="flex items-center gap-1.5 mt-3">
-                {isAboveThreshold ? (
-                    <CheckCircle2 size={11} className="text-emerald-400/70" />
-                ) : (
-                    <AlertTriangle size={11} className="text-amber-400/70" />
-                )}
-                <span className="text-[10px] text-[#888780]">
-                    Threshold: {Math.round((meta.threshold || 0.7) * 100)}%
-                </span>
-            </div>
-        </motion.div>
-    );
-};
-
-
-/* ═══════════════════════════════════════════
-   RESULTS PAGE
-   ═══════════════════════════════════════════ */
-const ResultsPage = () => {
-    const location = useLocation();
-    const navigate = useNavigate();
-
-    const rawState = location.state ?? null;
-
-    // ── Normalize metrics from any backend shape ──────────────────────────────
-    // rawState may be: null, {metrics:{...}, shapValues:{...}}, or {demographic_parity:0.65,...}
-    const _normalizeMetrics = (s) => {
-        if (!s || typeof s !== 'object') return null;
-        // Case A: { metrics: { key: number } }
-        if (s.metrics && typeof s.metrics === 'object' && !Array.isArray(s.metrics)) {
-            const m = {};
-            Object.entries(s.metrics).forEach(([k, v]) => { if (typeof v === 'number') m[k] = v; });
-            return Object.keys(m).length ? m : null;
-        }
-        // Case B: flat object of numbers — filter out non-metric fields
-        const numeric = {};
-        Object.entries(s).forEach(([k, v]) => {
-            if (typeof v === 'number' && k !== 'overall_fairness_score' && k !== 'score') numeric[k] = v;
-        });
-        return Object.keys(numeric).length ? numeric : null;
-    };
-
-    const metrics = _normalizeMetrics(rawState) ?? dummyMetrics;
-    const shapValues = rawState?.shapValues ?? rawState?.shap_values ?? dummyShap;
-
-    // ALL hooks must be declared before any conditional return (Rules of Hooks)
-    const [mitigatedData, setMitigatedData] = useState(null);
-    const [loading, setLoading] = useState(false);
-
-    const safeMetrics = metrics && typeof metrics === 'object' && !Array.isArray(metrics) ? metrics : dummyMetrics;
-
-    const biasedMetrics = useMemo(() =>
-        Object.entries(safeMetrics).filter(([, v]) => typeof v === 'number' && v < 0.7),
-        [safeMetrics]
-    );
-
-    useEffect(() => {
-        if (!rawState) {
-            console.warn('No state on /results — page may have been refreshed or navigated directly');
-        }
-    }, []);
-
-    const handleMitigation = async () => {
-        setLoading(true);
-        try {
-            const fileId = rawState?.fileId || 'demo_file_123';
-            const response = await api.post('/mitigate', { file_id: fileId });
-            setMitigatedData(response.data);
-        } catch (error) {
-            console.error("API Error, falling back to dummy mitigation data:", error);
-            setMitigatedData([
-                {
-                    metric: 'Demographic Parity',
-                    before: safeMetrics.demographic_parity ?? 0.65,
-                    after: Math.min((safeMetrics.demographic_parity ?? 0.65) + 0.2, 0.95)
-                },
-                {
-                    metric: 'Equal Opportunity',
-                    before: safeMetrics.equal_opportunity ?? 0.48,
-                    after: Math.min((safeMetrics.equal_opportunity ?? 0.48) + 0.25, 0.92)
-                }
-            ]);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // Fallback UI — shown when navigated directly / page refreshed (state is lost)
-    if (!rawState) {
-        return (
-            <div style={{
-                minHeight: '100vh', background: '#07070F', color: 'white',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexDirection: 'column', gap: '16px', fontFamily: 'sans-serif', textAlign: 'center',
-            }}>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>No Audit Data Found</h2>
-                <p style={{ color: '#94a3b8' }}>Please go back and run a fairness audit first.</p>
-                <button
-                    onClick={() => navigate('/')}
-                    style={{
-                        padding: '10px 20px', background: '#6366f1', color: 'white',
-                        border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600',
-                    }}
-                >
-                    Go Back
-                </button>
-            </div>
-        );
+/* ─────────────────────────────────────────────
+   LIVE CLOCK CHIP (matches landing frame marks)
+   ───────────────────────────────────────────── */
+function useUtcClock() {
+  const [clock, setClock] = useState('—')
+  useEffect(() => {
+    const tick = () => {
+      const d = new Date()
+      const hh = String(d.getUTCHours()).padStart(2, '0')
+      const mm = String(d.getUTCMinutes()).padStart(2, '0')
+      const ss = String(d.getUTCSeconds()).padStart(2, '0')
+      setClock(`${hh}:${mm}:${ss} UTC`)
     }
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [])
+  return clock
+}
 
+/* ─────────────────────────────────────────────
+   PAGE
+   ───────────────────────────────────────────── */
+const ResultsPage = () => {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const clock = useUtcClock()
+
+  // Demo mode — enables automation + shareable demo URLs without
+  // requiring a live backend or navigation state.
+  const isDemo = location.search.includes('demo=1') || location.hash === '#demo'
+  const rawState = location.state ?? (isDemo ? {
+    metrics: dummyMetrics,
+    shapValues: dummyShap,
+    fileId: 'demo-audit',
+  } : null)
+
+  const _normalizeMetrics = (s) => {
+    if (!s || typeof s !== 'object') return null
+    if (s.metrics && typeof s.metrics === 'object' && !Array.isArray(s.metrics)) {
+      const m = {}
+      Object.entries(s.metrics).forEach(([k, v]) => { if (typeof v === 'number') m[k] = v })
+      return Object.keys(m).length ? m : null
+    }
+    const numeric = {}
+    Object.entries(s).forEach(([k, v]) => {
+      if (typeof v === 'number' && k !== 'overall_fairness_score' && k !== 'score') numeric[k] = v
+    })
+    return Object.keys(numeric).length ? numeric : null
+  }
+
+  const metrics = _normalizeMetrics(rawState) ?? dummyMetrics
+  const shapValues = rawState?.shapValues ?? rawState?.shap_values ?? dummyShap
+
+  const [mitigatedData, setMitigatedData] = useState(null)
+  const [loading, setLoading] = useState(false)
+
+  const safeMetrics = metrics && typeof metrics === 'object' && !Array.isArray(metrics)
+    ? metrics
+    : dummyMetrics
+
+  const biasedMetrics = useMemo(() =>
+    Object.entries(safeMetrics).filter(([, v]) => typeof v === 'number' && v < 0.7),
+    [safeMetrics]
+  )
+
+  const overall = useMemo(() => {
+    const values = Object.values(safeMetrics).filter((v) => typeof v === 'number')
+    if (!values.length) return 0
+    return values.reduce((a, b) => a + b, 0) / values.length
+  }, [safeMetrics])
+
+  useEffect(() => {
+    if (!rawState) {
+      console.warn('No state on /results — page may have been refreshed or navigated directly')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleMitigation = async () => {
+    setLoading(true)
+    try {
+      const fileId = rawState?.fileId || 'demo_file_123'
+      const response = await api.post('/mitigate', { file_id: fileId })
+      setMitigatedData(response.data)
+    } catch (error) {
+      console.error('API Error, falling back to dummy mitigation data:', error)
+      setMitigatedData([
+        {
+          metric: 'Demographic Parity',
+          before: safeMetrics.demographic_parity ?? 0.65,
+          after: Math.min((safeMetrics.demographic_parity ?? 0.65) + 0.2, 0.95),
+        },
+        {
+          metric: 'Equal Opportunity',
+          before: safeMetrics.equal_opportunity ?? 0.48,
+          after: Math.min((safeMetrics.equal_opportunity ?? 0.48) + 0.25, 0.92),
+        },
+      ])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  /* ── Empty state — navigated directly or state lost ── */
+  if (!rawState) {
     return (
-        <div className="min-h-screen text-white" style={{ background: '#07070F', padding: '24px 32px' }}>
+      <section className="relative flex min-h-[calc(100vh-64px)] items-center justify-center px-6 pt-24">
+        <div className="glass frame-mark max-w-[520px] rounded-3xl p-10 text-center">
+          <span className="section-label">Instrument · Idle</span>
+          <h2 className="h-display mt-6 text-[44px] leading-[1] text-obs-text md:text-[56px]">
+            No observation <span className="italic text-obs-lumen">on record</span>.
+          </h2>
+          <p className="mt-6 text-[14px] leading-relaxed text-obs-dim">
+            The results page holds the live audit from your last submission.
+            Run a new audit to see metrics, SHAP explanations, and mitigation here.
+          </p>
+          <button
+            onClick={() => navigate('/')}
+            className="btn mt-8 border border-white/15 bg-white/[0.04] text-obs-text hover:border-obs-cerulean/50 hover:bg-obs-cerulean/10"
+          >
+            <ArrowLeft size={14} />
+            <span className="font-mono text-[11px] uppercase tracking-[0.3em]">Return to intake</span>
+          </button>
+        </div>
+      </section>
+    )
+  }
 
-            {/* ─── PAGE HEADER ─── */}
-            <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="mb-8"
-            >
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                    <div>
-                        <div className="flex items-center gap-2.5 mb-1">
-                            <div className="w-1 h-5 rounded-full bg-[--color-primary]" />
-                            <h1 className="text-[22px] font-semibold text-white tracking-tight">
-                                Audit Results
-                            </h1>
-                            <span className="ml-2 px-2.5 py-0.5 rounded-full bg-[--color-primary]/10 border border-[--color-primary]/20 text-[10px] font-semibold text-white uppercase tracking-wider">
-                                Live
-                            </span>
-                        </div>
-                        <p className="text-[13px] text-white/55 ml-3.5">
-                            AI fairness analysis — review metrics, explore feature impact, and apply mitigation.
-                        </p>
-                    </div>
-                    {/* ── Export Report CTA ── */}
-                    <ExportReport metrics={safeMetrics} shapValues={shapValues} />
+  const overallStatus = getStatus(overall)
+  const OverallIcon = overallStatus.icon
+
+  return (
+    <div className="relative min-h-screen overflow-x-hidden pt-24">
+      {/* Decorative glow, subtle, tinted with new palette */}
+      <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0">
+        <div className="absolute -top-40 -left-40 h-[520px] w-[520px] rounded-full bg-obs-cerulean/[0.05] blur-[140px]" />
+        <div className="absolute top-1/3 -right-60 h-[420px] w-[420px] rounded-full bg-obs-lumen/[0.04] blur-[120px]" />
+        <div className="absolute -bottom-60 left-1/3 h-[420px] w-[420px] rounded-full bg-obs-aurora/[0.04] blur-[120px]" />
+      </div>
+
+      <div className="relative z-10 mx-auto max-w-[1280px] px-6 pb-24 md:px-12">
+        {/* ─── Editorial page header ─── */}
+        <motion.header
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          className="mb-14 md:mb-20"
+        >
+          <div className="flex items-center gap-3">
+            <span className="h-px w-10 bg-obs-cerulean/70" />
+            <span className="section-label">Observation Report · Volume 04</span>
+            <span className="ml-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.3em] text-obs-dim">
+              <span
+                className="inline-block h-1.5 w-1.5 rounded-full bg-obs-aurora"
+                style={{ boxShadow: '0 0 8px #6EE7C4', animation: 'blink 1.6s infinite' }}
+              />
+              Live · {clock}
+            </span>
+          </div>
+
+          <div className="mt-6 grid grid-cols-12 gap-6">
+            <div className="col-span-12 md:col-span-7">
+              <h1 className="h-display text-[60px] leading-[0.92] text-obs-text md:text-[112px]">
+                Audit <span className="italic text-obs-lumen">results</span>.
+              </h1>
+              <p className="mt-6 max-w-[560px] text-[15px] leading-relaxed text-obs-dim md:text-[17px]">
+                A complete record of this observation — eight fairness signals, feature-level
+                attribution, intersectional distribution, and a reversible mitigation pathway.
+              </p>
+            </div>
+
+            <div className="col-span-12 md:col-span-4 md:col-start-9 md:mt-10">
+              <div className="glass frame-mark rounded-3xl p-6">
+                <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.3em] text-obs-dim">
+                  <span>Overall score</span>
+                  <span className={overallStatus.textClass}>{overallStatus.label}</span>
                 </div>
+                <div className="mt-4 flex items-baseline gap-2">
+                  <span className="num-display text-[72px] leading-none" style={{ color: overallStatus.accent }}>
+                    {Math.round(overall * 100)}
+                  </span>
+                  <span className="text-obs-dim">/100</span>
+                </div>
+                <div className="mt-4 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.28em] text-obs-ghost">
+                  <OverallIcon size={12} />
+                  <span>
+                    {biasedMetrics.length === 0
+                      ? 'All metrics above threshold'
+                      : `${biasedMetrics.length} metric${biasedMetrics.length > 1 ? 's' : ''} below threshold`}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Action bar */}
+          <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-white/8 pt-6">
+            <button
+              onClick={() => navigate('/')}
+              className="group inline-flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.32em] text-obs-dim transition hover:text-obs-text"
+            >
+              <span className="inline-block h-px w-8 bg-obs-dim/60 transition-all group-hover:w-14 group-hover:bg-obs-cerulean" />
+              <ArrowLeft size={12} />
+              Return to intake
+            </button>
+            <div className="flex items-center gap-3">
+              <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-obs-ghost">
+                Record ID
+              </span>
+              <span className="chip text-obs-text">
+                FLX-Δ-024 · REV 04
+              </span>
+              <ExportReport metrics={safeMetrics} shapValues={shapValues} />
+            </div>
+          </div>
+        </motion.header>
+
+        {/* ─── § 01 · Summary ─── */}
+        <section className="relative mb-28 md:mb-36">
+          <SectionHeader num="01" label="Summary" title="Aggregate fairness verdict." />
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <SummaryBanner metrics={safeMetrics} />
+          </motion.div>
+        </section>
+
+        {/* ─── § 02 · Metrics ─── */}
+        <section className="relative mb-28 md:mb-36">
+          <SectionHeader num="02" label="Metric Panel" title="Signal-by-signal readout." />
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {Object.entries(safeMetrics).map(([key, value], index) => (
+              <MetricCardPremium key={key} metricKey={key} value={value} index={index} />
+            ))}
+          </div>
+        </section>
+
+        {/* ─── § 03 · Explainability ─── */}
+        <section className="relative mb-28 md:mb-36">
+          <SectionHeader num="03" label="Explainability" title="What drives the outcome." />
+          <ChartGrid cols={2} gap="gap-6">
+            <motion.div
+              className="w-full min-w-0"
+              initial={{ opacity: 0, x: -18, filter: 'blur(6px)' }}
+              whileInView={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+              viewport={{ once: true, amount: 0.2 }}
+              transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+            >
+              {shapValues && typeof shapValues === 'object' && !Array.isArray(shapValues) && Object.keys(shapValues).length > 0 ? (
+                <SHAPChart shapValues={shapValues} />
+              ) : (
+                <div className="glass rounded-3xl p-10 text-center font-mono text-[11px] uppercase tracking-[0.3em] text-obs-dim">
+                  SHAP data unavailable
+                </div>
+              )}
             </motion.div>
 
-            {/* ─── BENTO GRID DASHBOARD ─── */}
-            <div className="grid grid-cols-12 gap-6">
-            {/* ─── TILE: OVERVIEW ─── */}
-            <section className="col-span-12 lg:col-span-8">
-                <SectionHeader
-                    icon={BarChart3}
-                    title="Overview"
-                    subtitle="Aggregate fairness verdict for your model"
-                    delay={0.1}
-                />
+            <motion.div
+              className="w-full min-w-0"
+              initial={{ opacity: 0, x: 18, filter: 'blur(6px)' }}
+              whileInView={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
+              viewport={{ once: true, amount: 0.2 }}
+              transition={{ duration: 0.9, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <BiasHeatmap metrics={safeMetrics} />
+            </motion.div>
+          </ChartGrid>
+        </section>
+
+        {/* ─── § 04 · Mitigation ─── */}
+        <section id="mitigation" className="relative mb-16">
+          <SectionHeader num="04" label="Mitigation" title="Restore the balance." />
+
+          <motion.div
+            initial={{ opacity: 0, y: 20, filter: 'blur(8px)' }}
+            whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+            className="glass frame-mark relative overflow-hidden rounded-3xl p-8 md:p-14"
+          >
+            <AnimatePresence mode="wait">
+              {!mitigatedData ? (
                 <motion.div
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.15 }}
+                  key="cta"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.4 }}
+                  className="mx-auto max-w-[720px] text-center"
                 >
-                    <SummaryBanner metrics={safeMetrics} />
+                  <motion.div
+                    animate={{ y: [0, -4, 0] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                    className="inline-flex h-16 w-16 items-center justify-center rounded-2xl border border-obs-cerulean/30 bg-obs-cerulean/10"
+                  >
+                    <Flame size={26} className="text-obs-cerulean" />
+                  </motion.div>
+
+                  <h3 className="h-display mt-8 text-[38px] leading-[1.05] text-obs-text md:text-[56px]">
+                    Bias detected <br className="hidden md:block" />
+                    in your <span className="italic text-obs-lumen">model</span>.
+                  </h3>
+
+                  <p className="mx-auto mt-5 max-w-[520px] text-[15px] leading-relaxed text-obs-dim">
+                    Apply AIF360 post-processing calibration. Non-destructive, fully reversible,
+                    and every parameter change is logged to the audit record.
+                  </p>
+
+                  {biasedMetrics.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.96 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.3 }}
+                      className="mt-7 inline-flex items-center gap-2 rounded-full border border-obs-lumen/30 bg-obs-lumen/[0.06] px-4 py-2"
+                    >
+                      <AlertTriangle size={13} className="text-obs-lumen" />
+                      <span className="font-mono text-[11px] uppercase tracking-[0.26em] text-obs-lumen">
+                        {biasedMetrics.length} metric{biasedMetrics.length > 1 ? 's' : ''} below threshold
+                      </span>
+                    </motion.div>
+                  )}
+
+                  <div className="mt-10">
+                    <motion.button
+                      id="mitigation-apply-btn"
+                      onClick={handleMitigation}
+                      disabled={loading}
+                      whileHover={!loading ? { scale: 1.02, y: -2 } : {}}
+                      whileTap={!loading ? { scale: 0.98 } : {}}
+                      transition={{ type: 'spring', stiffness: 300 }}
+                      className="group relative inline-flex cursor-pointer items-center gap-3 rounded-full border border-obs-cerulean/60 bg-obs-cerulean px-8 py-4 font-mono text-[11px] uppercase tracking-[0.3em] text-obs-void transition-all hover:bg-obs-lumen disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {loading ? (
+                        <>
+                          <Loader2 size={14} className="animate-spin" />
+                          <span>Applying mitigation…</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={14} />
+                          <span>Apply post-processing mitigation</span>
+                          <ChevronRight size={14} className="transition-transform group-hover:translate-x-1" />
+                        </>
+                      )}
+                    </motion.button>
+                  </div>
+
+                  <div className="mt-10 flex flex-wrap items-center justify-center gap-8 font-mono text-[10px] uppercase tracking-[0.28em] text-obs-ghost">
+                    <span className="flex items-center gap-2">
+                      <ShieldCheck size={12} className="text-obs-aurora" />
+                      Non-destructive
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <TrendingUp size={12} className="text-obs-cerulean" />
+                      AI-optimised
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <CheckCircle2 size={12} className="text-obs-lumen" />
+                      Reversible
+                    </span>
+                  </div>
                 </motion.div>
-            </section>
-
-            {/* ─── TILE: ACTIONS ─── */}
-            <section className="col-span-12 lg:col-span-4">
-                <SectionHeader
-                    icon={Flame}
-                    title="Actions"
-                    subtitle="Export + mitigation controls"
-                    delay={0.12}
-                />
-                <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 backdrop-blur-xl">
-                    <p className="text-[10px] font-mono uppercase tracking-[0.28em] text-white/55">
-                        Controls
-                    </p>
-                    <p className="mt-2 text-[13px] text-white/70 leading-relaxed">
-                        Download artifacts for judges and trigger mitigation to show a visible “before → after” shift.
-                    </p>
-                    <div className="mt-5">
-                        <ExportReport metrics={safeMetrics} shapValues={shapValues} label="Export Evidence Pack" />
-                    </div>
-                    <div className="mt-4">
-                        <motion.button
-                            onClick={handleMitigation}
-                            disabled={loading}
-                            whileHover={!loading ? { y: -2 } : {}}
-                            whileTap={!loading ? { scale: 0.99 } : {}}
-                            className="w-full rounded-xl px-4 py-3 font-extrabold text-[13px] text-black
-                                       bg-[--color-primary] hover:brightness-110 transition disabled:opacity-50"
-                        >
-                            {loading ? "Applying mitigation…" : "Apply Mitigation"}
-                        </motion.button>
-                    </div>
-                </div>
-            </section>
-
-            {/* ─── TILE: METRICS ─── */}
-            <section className="col-span-12">
-                <SectionHeader
-                    icon={Target}
-                    title="Fairness Metrics"
-                    subtitle="Individual metric scores with status indicators and trend analysis"
-                    delay={0.2}
-                    badge={(biasedMetrics?.length ?? 0) > 0 ? {
-                        text: `${biasedMetrics.length} below threshold`,
-                        className: 'bg-amber-500/10 text-amber-400 border border-amber-500/20',
-                        icon: AlertTriangle,
-                    } : {
-                        text: 'All passing',
-                        className: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
-                        icon: CheckCircle2,
-                    }}
-                />
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                    {Object.entries(safeMetrics).map(([key, value], index) => (
-                        <div
-                            key={key}
-                            className="transform-gpu transition-transform duration-300 will-change-transform
-                                       hover:[transform:perspective(900px)_rotateX(6deg)_rotateY(-7deg)_translateY(-6px)]"
-                        >
-                            <MetricCardPremium
-                                metricKey={key}
-                                value={value}
-                                index={index}
-                            />
-                        </div>
-                    ))}
-                </div>
-            </section>
-
-            {/* ─── TILE: EXPLAINABILITY ─── */}
-            <section className="col-span-12">
-                <SectionHeader
-                    icon={Sparkles}
-                    title="Explainability"
-                    subtitle="Understand what drives your model's decisions"
-                    delay={0.3}
-                />
-
-                {/* ── Charts: SHAP + Heatmap side-by-side on desktop ── */}
-                <ChartGrid cols={2} gap="gap-6">
-                    {/* SHAP Chart — auto-height, no clip */}
-                    <div className="w-full min-w-0">
-                        {shapValues && typeof shapValues === 'object' && !Array.isArray(shapValues) &&
-                            Object.keys(shapValues).length > 0
-                            ? <SHAPChart shapValues={shapValues} />
-                            : <div style={{ padding: '24px', color: '#64748b', textAlign: 'center' }}>SHAP data unavailable</div>
-                        }
-                    </div>
-
-                    {/* Heatmap — auto-height, no clip */}
-                    <div className="w-full min-w-0">
-                        <BiasHeatmap metrics={safeMetrics} />
-                    </div>
-                </ChartGrid>
-            </section>
-
-            {/* ─── TILE: MITIGATION STORY ─── */}
-            <section className="col-span-12">
-                <SectionHeader
-                    icon={Zap}
-                    title="Mitigation"
-                    subtitle="Improve model fairness with AI-powered adjustments"
-                    delay={0.45}
-                />
-
+              ) : (
                 <motion.div
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: 0.5 }}
+                  key="results"
+                  initial={{ opacity: 0, y: 20, filter: 'blur(8px)' }}
+                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                 >
-                    <div className="relative rounded-2xl border border-white/[0.06] overflow-hidden bg-[--color-surface-container-low]">
-                        {/* Decorative elements */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-[--color-primary]/[0.06] via-transparent to-transparent pointer-events-none" />
-                        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-                        <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full blur-3xl opacity-[0.06] bg-[--color-primary] pointer-events-none" />
-
-                        <div className="relative z-10 p-8 sm:p-10">
-                            <AnimatePresence mode="wait">
-                                {!mitigatedData ? (
-                                    <motion.div
-                                        key="cta"
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        exit={{ opacity: 0, y: -10 }}
-                                        transition={{ duration: 0.3 }}
-                                        className="text-center max-w-xl mx-auto"
-                                    >
-                                        {/* Icon */}
-                                        <motion.div
-                                            animate={{ y: [0, -4, 0] }}
-                                            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-                                            className="inline-flex p-5 rounded-2xl bg-gradient-to-br from-[--color-primary]/15 to-[--color-primary]/5 border border-[--color-primary]/20 mb-6"
-                                        >
-                                            <Zap size={32} className="text-[--color-primary]" />
-                                        </motion.div>
-
-                                        <h3 className="text-[22px] font-bold text-white mb-2 tracking-tight">
-                                            Bias Detected in Your Model
-                                        </h3>
-                                        <p className="text-[14px] text-white/55 leading-relaxed mb-4 max-w-md mx-auto">
-                                            Our AI engine analyzes bias patterns and applies post-processing
-                                            calibration to improve fairness — without retraining.
-                                        </p>
-
-                                        {/* Warning badge */}
-                                        {biasedMetrics.length > 0 && (
-                                            <motion.div
-                                                initial={{ opacity: 0, scale: 0.9 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                transition={{ delay: 0.3 }}
-                                                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/[0.08] border border-amber-500/20 mb-8"
-                                            >
-                                                <AlertTriangle size={14} className="text-amber-400" />
-                                                <span className="text-[12px] text-amber-400 font-semibold">
-                                                    {biasedMetrics.length} metric{biasedMetrics.length > 1 ? 's' : ''} below fairness threshold
-                                                </span>
-                                            </motion.div>
-                                        )}
-
-                                        {/* CTA Button */}
-                                        <div className="mt-2">
-                                            <motion.button
-                                                id="mitigation-apply-btn"
-                                                onClick={handleMitigation}
-                                                disabled={loading}
-                                                whileHover={!loading ? { scale: 1.03, y: -2 } : {}}
-                                                whileTap={!loading ? { scale: 0.98 } : {}}
-                                                className="group relative inline-flex items-center gap-2.5 px-10 py-4
-                                                           rounded-xl font-extrabold text-[14px] text-black cursor-pointer
-                                                           transition-all duration-300 disabled:cursor-not-allowed
-                                                           disabled:opacity-50 bg-[--color-primary] hover:brightness-110"
-                                            >
-                                                {loading ? (
-                                                    <>
-                                                        <Loader2 size={18} className="animate-spin" />
-                                                        <span>Applying Mitigation…</span>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Sparkles size={18} />
-                                                        <span>Apply Post-Processing Mitigation</span>
-                                                        <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform duration-200" />
-                                                    </>
-                                                )}
-
-                                                {/* Animated glow ring */}
-                                                {!loading && (
-                                                    <span
-                                                        className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-                                                        style={{ boxShadow: '0 0 46px 6px rgba(0,229,255,0.22)' }}
-                                                    />
-                                                )}
-                                            </motion.button>
-                                        </div>
-
-                                        {/* Trust signals */}
-                                        <div className="flex items-center justify-center gap-8 mt-8 text-[11px] text-[#888780]">
-                                            <span className="flex items-center gap-1.5">
-                                                <ShieldCheck size={12} className="text-emerald-500/70" />
-                                                Non-destructive
-                                            </span>
-                                            <span className="flex items-center gap-1.5">
-                                                <TrendingUp size={12} className="text-[--color-primary]/70" />
-                                                AI-optimized
-                                            </span>
-                                            <span className="flex items-center gap-1.5">
-                                                <CheckCircle2 size={12} className="text-[#888780]" />
-                                                Reversible
-                                            </span>
-                                        </div>
-                                    </motion.div>
-                                ) : (
-                                    <motion.div
-                                        key="results"
-                                        initial={{ opacity: 0, y: 20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
-                                    >
-                                        {/* Success header */}
-                                        <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
-                                            <div className="flex items-center gap-3">
-                                                <motion.div
-                                                    initial={{ scale: 0 }}
-                                                    animate={{ scale: 1 }}
-                                                    transition={{ type: 'spring', stiffness: 300, delay: 0.2 }}
-                                                    className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20"
-                                                >
-                                                    <CheckCircle2 size={18} className="text-emerald-400" />
-                                                </motion.div>
-                                                <div>
-                                                    <h3 className="text-[17px] font-bold text-white tracking-tight">
-                                                        Mitigation Applied Successfully
-                                                    </h3>
-                                                    <p className="text-[12px] text-[#888780]">
-                                                        Compare before and after fairness scores below
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-emerald-400 font-semibold">
-                                                <CheckCircle2 size={12} />
-                                                Calibration Complete
-                                            </span>
-                                        </div>
-
-                                        <BeforeAfterChart data={mitigatedData} />
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
+                  <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <motion.span
+                        initial={{ scale: 0, rotate: -40 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        transition={{ type: 'spring', stiffness: 220, delay: 0.2 }}
+                        className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-obs-aurora/40 bg-obs-aurora/[0.08]"
+                      >
+                        <CheckCircle2 size={20} className="text-obs-aurora" />
+                      </motion.span>
+                      <div>
+                        <h3 className="h-display text-[26px] leading-tight text-obs-text md:text-[32px]">
+                          Mitigation <span className="italic text-obs-aurora">complete</span>.
+                        </h3>
+                        <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.28em] text-obs-dim">
+                          Post-processing calibration applied · compare below
+                        </p>
+                      </div>
                     </div>
+                    <span className="chip border-obs-aurora/30 bg-obs-aurora/[0.08] text-obs-aurora">
+                      <CheckCircle2 size={11} />
+                      Calibrated
+                    </span>
+                  </div>
+
+                  <BeforeAfterChart data={mitigatedData} />
                 </motion.div>
-            </section>
-            </div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        </section>
+
+        {/* Closing ledger */}
+        <div className="mt-16 flex items-center gap-4">
+          <span className="h-px flex-1 bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+          <span className="font-mono text-[10px] uppercase tracking-[0.4em] text-obs-dim">
+            End of report · REV 04 · {clock}
+          </span>
+          <span className="h-px flex-1 bg-gradient-to-r from-transparent via-white/15 to-transparent" />
         </div>
-    );
-};
+      </div>
+    </div>
+  )
+}
 
-export default ResultsPage;
+export default ResultsPage

@@ -63,10 +63,10 @@ const CircularScore = ({ score, color, size = 120 }) => {
 /* ── Info Chip (model, dataset, timestamp) ── */
 const InfoChip = ({ icon: Icon, label, value }) => (
     <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-        <Icon size={14} className="text-[#888780] flex-shrink-0" />
+        <Icon size={14} className="text-[#8B93A8] flex-shrink-0" />
         <div className="min-w-0">
-            <p className="text-[9px] text-[#888780] uppercase tracking-widest font-medium leading-none mb-0.5">{label}</p>
-            <p className="text-[12px] text-[#cac4d0] font-medium truncate">{value}</p>
+            <p className="text-[9px] text-[#8B93A8] uppercase tracking-[0.26em] font-mono leading-none mb-0.5">{label}</p>
+            <p className="text-[12px] text-[#E8EAF0] font-medium truncate">{value}</p>
         </div>
     </div>
 );
@@ -82,34 +82,34 @@ const SummaryBanner = ({ metrics }) => {
     const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
     const biasedCount = scores.filter(s => s < 0.7).length;
 
-    /* Determine status */
+    /* Determine status — Obsidian Observatory palette */
     let config;
     if (avg >= 0.8) {
         config = {
             label: 'Audit Passed',
             sublabel: 'All metrics within acceptable thresholds',
             icon: ShieldCheck,
-            color: '#1D9E75',
-            badgeColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-            glowFrom: 'from-emerald-500/8',
+            color: '#6EE7C4',
+            badgeColor: 'bg-[#6EE7C4]/10 text-[#6EE7C4] border-[#6EE7C4]/25',
+            glowFrom: 'from-[#6EE7C4]/[0.08]',
         };
     } else if (avg >= 0.5) {
         config = {
             label: 'Needs Attention',
             sublabel: `${biasedCount} metric${biasedCount > 1 ? 's' : ''} below fairness threshold`,
             icon: AlertTriangle,
-            color: '#EF9F27',
-            badgeColor: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-            glowFrom: 'from-amber-500/8',
+            color: '#E8D5A8',
+            badgeColor: 'bg-[#E8D5A8]/10 text-[#E8D5A8] border-[#E8D5A8]/25',
+            glowFrom: 'from-[#E8D5A8]/[0.08]',
         };
     } else {
         config = {
             label: 'Critical Bias Detected',
             sublabel: 'Immediate mitigation recommended',
             icon: XOctagon,
-            color: '#E24B4A',
-            badgeColor: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
-            glowFrom: 'from-rose-500/8',
+            color: '#FF6E6E',
+            badgeColor: 'bg-[#FF6E6E]/10 text-[#FF6E6E] border-[#FF6E6E]/25',
+            glowFrom: 'from-[#FF6E6E]/[0.08]',
         };
     }
 
@@ -125,9 +125,20 @@ const SummaryBanner = ({ metrics }) => {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="relative rounded-2xl border border-white/[0.06] overflow-hidden"
-            style={{ background: 'linear-gradient(135deg, #1b1c1d 0%, #1f2021 50%, #1b1c1d 100%)' }}
+            className="glass frame-mark relative rounded-3xl overflow-hidden"
         >
+            {/* ── GLOW BLOB — critical card halo ── */}
+            <div
+                className="absolute pointer-events-none"
+                style={{
+                    top: '-60px', left: '-60px',
+                    width: '320px', height: '320px',
+                    borderRadius: '50%',
+                    background: `radial-gradient(circle, ${config.color}30 0%, transparent 70%)`,
+                    filter: 'blur(40px)',
+                }}
+            />
+
             {/* Decorative gradient glow */}
             <div className={`absolute inset-0 bg-gradient-to-br ${config.glowFrom} via-transparent to-transparent pointer-events-none`} />
             <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
@@ -151,7 +162,9 @@ const SummaryBanner = ({ metrics }) => {
                         {/* Status badge */}
                         <div className="flex items-center gap-3 mb-3">
                             <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-semibold border ${config.badgeColor}`}>
-                                <span
+                                <motion.span
+                                    animate={{ opacity: [1, 0.4, 1] }}
+                                    transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
                                     className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                                     style={{ backgroundColor: config.color, boxShadow: `0 0 8px ${config.color}80` }}
                                 />
@@ -163,10 +176,10 @@ const SummaryBanner = ({ metrics }) => {
                         </div>
 
                         {/* Headline */}
-                        <h2 className="text-[20px] sm:text-[22px] font-semibold text-white tracking-tight mb-1.5 leading-tight">
-                            AI Fairness Audit Report
+                        <h2 className="font-display text-[28px] sm:text-[34px] text-white tracking-tight mb-1.5 leading-[1.05]">
+                            AI fairness <span className="italic" style={{ color: config.color }}>audit report</span>
                         </h2>
-                        <p className="text-[13px] text-[#888780] leading-relaxed max-w-xl mb-5">
+                        <p className="text-[13px] text-[#8B93A8] leading-relaxed max-w-xl mb-5">
                             {config.sublabel}
                         </p>
 

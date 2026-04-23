@@ -46,8 +46,8 @@ const CustomTooltip = ({ active, payload, label }) => {
                     alignItems: 'center',
                     gap: '4px',
                 }}>
-                    <ArrowUpRight size={12} style={{ color: '#1D9E75' }} />
-                    <span style={{ fontSize: '10px', color: '#1D9E75', fontWeight: 600 }}>
+                    <ArrowUpRight size={12} style={{ color: '#6EE7C4' }} />
+                    <span style={{ fontSize: '10px', color: '#6EE7C4', fontWeight: 600 }}>
                         +{((payload[1].value - payload[0].value) * 100).toFixed(1)}% improvement
                     </span>
                 </div>
@@ -66,7 +66,7 @@ const CustomLegend = ({ payload }) => (
                     background: entry.color,
                     boxShadow: `0 0 6px ${entry.color}60`,
                 }} />
-                <span style={{ fontSize: '11px', color: '#888780', fontWeight: 500 }}>
+                <span style={{ fontSize: '11px', color: '#8B93A8', fontWeight: 500 }}>
                     {entry.value}
                 </span>
             </div>
@@ -100,18 +100,18 @@ const BeforeAfterChart = ({ data }) => {
                             transition={{ duration: 0.4, delay: 0.1 + i * 0.08 }}
                             className="flex items-center gap-3 p-4 rounded-xl bg-white/[0.02] border border-white/[0.05]"
                         >
-                            <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex-shrink-0">
-                                <CheckCircle2 size={14} className="text-emerald-400" />
+                            <div className="p-2 rounded-lg bg-[#6EE7C4]/10 border border-[#6EE7C4]/25 flex-shrink-0">
+                                <CheckCircle2 size={14} className="text-[#6EE7C4]" />
                             </div>
                             <div className="min-w-0">
-                                <p className="text-[10px] text-[#888780] uppercase tracking-widest font-medium truncate">
+                                <p className="text-[10px] text-[#8B93A8] uppercase tracking-widest font-medium truncate">
                                     {d.metric}
                                 </p>
                                 <div className="flex items-center gap-2 mt-0.5">
                                     <span className="text-[14px] font-bold text-white">
                                         {Math.round(d.after * 100)}%
                                     </span>
-                                    <span className="flex items-center gap-0.5 text-[11px] text-emerald-400 font-semibold">
+                                    <span className="flex items-center gap-0.5 text-[11px] text-[#6EE7C4] font-semibold">
                                         <ArrowUpRight size={12} />
                                         +{improvement}%
                                     </span>
@@ -133,7 +133,7 @@ const BeforeAfterChart = ({ data }) => {
                     <h4 className="text-[13px] font-semibold text-white tracking-tight">
                         Fairness Score Comparison
                     </h4>
-                    <span className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                    <span className="flex items-center gap-1.5 text-[10px] text-[#6EE7C4] font-semibold px-2.5 py-1 rounded-full bg-[#6EE7C4]/10 border border-[#6EE7C4]/25">
                         <TrendingUp size={11} />
                         +{(totalImprovement * 100).toFixed(1)}% avg
                     </span>
@@ -152,13 +152,13 @@ const BeforeAfterChart = ({ data }) => {
                         />
                         <XAxis
                             dataKey="metric"
-                            tick={{ fontSize: 11, fill: '#888780', fontFamily: 'Inter' }}
+                            tick={{ fontSize: 11, fill: '#8B93A8', fontFamily: 'Inter' }}
                             axisLine={false}
                             tickLine={false}
                         />
                         <YAxis
                             domain={[0, 1]}
-                            tick={{ fontSize: 10, fill: '#888780', fontFamily: 'Inter' }}
+                            tick={{ fontSize: 10, fill: '#8B93A8', fontFamily: 'Inter' }}
                             axisLine={false}
                             tickLine={false}
                             tickFormatter={(v) => `${Math.round(v * 100)}%`}
@@ -168,16 +168,16 @@ const BeforeAfterChart = ({ data }) => {
                         <Bar
                             dataKey="before"
                             name="Before Mitigation"
-                            fill="#E24B4A"
-                            fillOpacity={0.7}
+                            fill="#FF6E6E"
+                            fillOpacity={0.75}
                             radius={[6, 6, 0, 0]}
                             maxBarSize={44}
                         />
                         <Bar
                             dataKey="after"
                             name="After Mitigation"
-                            fill="#1D9E75"
-                            fillOpacity={0.85}
+                            fill="#6EE7C4"
+                            fillOpacity={0.9}
                             radius={[6, 6, 0, 0]}
                             maxBarSize={44}
                         />

@@ -3,6 +3,51 @@ import { motion } from 'framer-motion'
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 import { mitigateFile } from '../api'
 
+/* ── Count-up hook ─────────────────────────────────────────────────────── */
+function useCountUp(target, duration = 1100, delay = 0, enabled = true) {
+  const [display, setDisplay] = useState(0)
+  useEffect(() => {
+    if (!enabled) return
+    let raf
+    const timer = setTimeout(() => {
+      const start = performance.now()
+      const step = (now) => {
+        const elapsed = now - start
+        const progress = Math.min(elapsed / duration, 1)
+        const eased = 1 - Math.pow(1 - progress, 3)
+        setDisplay(Math.round(eased * target))
+        if (progress < 1) raf = requestAnimationFrame(step)
+      }
+      raf = requestAnimationFrame(step)
+    }, delay)
+    return () => { clearTimeout(timer); cancelAnimationFrame(raf) }
+  }, [target, duration, delay, enabled])
+  return display
+}
+
+/* ── Animation Variants ─────────────────────────────────────────────────── */
+const sectionVariants = {
+  hidden: { opacity: 0, y: 40 },
+  visible: {
+    opacity: 1, y: 0,
+    transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] }
+  }
+}
+
+const staggerContainer = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.09, delayChildren: 0.05 } }
+}
+
+const staggerChild = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1, y: 0,
+    transition: { type: 'spring', stiffness: 240, damping: 22 }
+  }
+}
+
+/* ── Dark Tooltip ──────────────────────────────────────────────────────── */
 function DarkTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null
   return (
@@ -18,6 +63,58 @@ function DarkTooltip({ active, payload, label }) {
   )
 }
 
+/* ── Animated Stat Card ─────────────────────────────────────────────────── */
+function StatCard({ label, value, tone, delay = 0, accentColor }) {
+  const target = Math.round((value <= 1 ? value : value / 100) * 100)
+  const animated = useCountUp(target, 1100, delay)
+
+  return (
+    <motion.div
+      variants={staggerChild}
+      whileHover={{
+        scale: 1.04,
+        boxShadow: `0 0 24px -6px ${accentColor}50`,
+        transition: { type: 'spring', stiffness: 300, damping: 20 }
+      }}
+      className="group relative rounded-xl p-4 cursor-default
+                 bg-white/[0.03] border border-white/[0.05]
+                 hover:border-white/[0.12] transition-colors duration-300"
+    >
+      <div className="text-[9px] font-mono tracking-[0.25em] uppercase text-jscolors-text-muted mb-2">
+        {label}
+      </div>
+      <div className={['text-[36px] font-bold leading-none', tone].join(' ')}>
+        {animated}
+      </div>
+      {/* Glow line */}
+      <div
+        className="absolute bottom-0 left-4 right-4 h-[1px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+        style={{ background: `linear-gradient(to right, transparent, ${accentColor}70, transparent)` }}
+      />
+    </motion.div>
+  )
+}
+
+/* ── Up-arrow icon ──────────────────────────────────────────────────────── */
+function UpArrow() {
+  return (
+    <motion.span
+      className="absolute right-2 top-2 text-jscolors-accent-teal"
+      initial={{ y: 4, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ type: 'spring', stiffness: 300, delay: 0.3 }}
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <path d="M12 5v14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path d="M6 11l6-6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </motion.span>
+  )
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   MITIGATION SECTION
+   ════════════════════════════════════════════════════════════════════════ */
 export default function MitigationSection({ fileId }) {
   const [loading, setLoading] = useState(false)
   const [payload, setPayload] = useState(null)
@@ -28,7 +125,6 @@ export default function MitigationSection({ fileId }) {
       if (!fileId) return
       setLoading(true)
       try {
-        // We don't know the user's selectors here; backend can use defaults or cached context.
         const res = await mitigateFile(fileId, null, null)
         const data = res.data ?? res
         if (alive) setPayload(data)
@@ -39,9 +135,7 @@ export default function MitigationSection({ fileId }) {
       }
     }
     run()
-    return () => {
-      alive = false
-    }
+    return () => { alive = false }
   }, [fileId])
 
   const before = payload?.before || {
@@ -73,72 +167,97 @@ export default function MitigationSection({ fileId }) {
     }))
   }, [before, after])
 
-  const Stat = ({ label, v, tone }) => (
-    <div>
-      <div className="text-xs font-mono tracking-[0.25em] uppercase text-jscolors-text-muted">{label}</div>
-      <div className={['mt-2 text-[34px] font-bold', tone].join(' ')}>{Math.round((v <= 1 ? v : v / 100) * 100)}</div>
-    </div>
-  )
-
   return (
-    <section id="about" className="bg-jscolors-deep py-24">
+    <section id="mitigate" className="bg-jscolors-deep py-24">
       <div className="mx-auto max-w-6xl px-5">
-        <div className="max-w-2xl">
+
+        {/* Section heading */}
+        <motion.div
+          className="max-w-2xl"
+          variants={sectionVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.2 }}
+        >
           <div className="section-label text-jscolors-text-secondary">MITIGATE</div>
           <h2 className="mt-3 text-[38px] md:text-[52px] font-bold text-jscolors-text-primary">
             Before &amp; After Bias Mitigation
           </h2>
-        </div>
+        </motion.div>
 
-        <div className="relative mt-12 grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="card">
+        {/* Before / After cards */}
+        <motion.div
+          className="relative mt-12 grid grid-cols-1 gap-4 md:grid-cols-2"
+          variants={staggerContainer}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.1 }}
+        >
+          {/* BEFORE card */}
+          <motion.div
+            variants={staggerChild}
+            whileHover={{
+              scale: 1.015,
+              boxShadow: '0 0 32px -8px rgba(255,71,87,0.25)',
+              transition: { type: 'spring', stiffness: 200, damping: 20 }
+            }}
+            className="card group cursor-default"
+          >
+            {/* Top accent */}
             <div className="h-[3px] w-12 bg-jscolors-accent-red/80" />
             <div className="mt-4 text-xs font-mono tracking-[0.3em] uppercase text-jscolors-accent-red">
               BEFORE MITIGATION
             </div>
-            <div className="mt-6 grid grid-cols-3 gap-4">
-              <Stat label="Disparate Impact" v={before.disparateImpact} tone="text-jscolors-accent-amber" />
-              <Stat label="Demographic Parity" v={before.demographicParity} tone="text-jscolors-accent-red" />
-              <Stat label="Equal Opportunity" v={before.equalOpportunity} tone="text-jscolors-accent-red" />
-            </div>
-          </div>
+            <motion.div
+              className="mt-6 grid grid-cols-3 gap-3"
+              variants={staggerContainer}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+            >
+              <StatCard label="Disparate Impact" value={before.disparateImpact} tone="text-jscolors-accent-amber" delay={0} accentColor="#EF9F27" />
+              <StatCard label="Demographic Parity" value={before.demographicParity} tone="text-jscolors-accent-red" delay={80} accentColor="#E24B4A" />
+              <StatCard label="Equal Opportunity" value={before.equalOpportunity} tone="text-jscolors-accent-red" delay={160} accentColor="#E24B4A" />
+            </motion.div>
+          </motion.div>
 
-          <div className="card">
+          {/* AFTER card */}
+          <motion.div
+            variants={staggerChild}
+            whileHover={{
+              scale: 1.015,
+              boxShadow: '0 0 32px -8px rgba(29,158,117,0.25)',
+              transition: { type: 'spring', stiffness: 200, damping: 20 }
+            }}
+            className="card group cursor-default"
+          >
             <div className="h-[3px] w-12 bg-jscolors-accent-green/80" />
             <div className="mt-4 text-xs font-mono tracking-[0.3em] uppercase text-jscolors-accent-green">
               AFTER MITIGATION
             </div>
-            <div className="mt-6 grid grid-cols-3 gap-4">
+            <motion.div
+              className="mt-6 grid grid-cols-3 gap-3"
+              variants={staggerContainer}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+            >
               <div className="relative">
-                <Stat label="Disparate Impact" v={after.disparateImpact} tone="text-jscolors-accent-green" />
-                <span className="absolute right-1 top-8 text-jscolors-accent-teal">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 5v14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                    <path d="M6 11l6-6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </span>
+                <StatCard label="Disparate Impact" value={after.disparateImpact} tone="text-jscolors-accent-green" delay={200} accentColor="#1D9E75" />
+                <UpArrow />
               </div>
               <div className="relative">
-                <Stat label="Demographic Parity" v={after.demographicParity} tone="text-jscolors-accent-teal" />
-                <span className="absolute right-1 top-8 text-jscolors-accent-teal">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 5v14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                    <path d="M6 11l6-6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </span>
+                <StatCard label="Demographic Parity" value={after.demographicParity} tone="text-jscolors-accent-teal" delay={280} accentColor="#3DDBD9" />
+                <UpArrow />
               </div>
               <div className="relative">
-                <Stat label="Equal Opportunity" v={after.equalOpportunity} tone="text-jscolors-accent-teal" />
-                <span className="absolute right-1 top-8 text-jscolors-accent-teal">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 5v14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                    <path d="M6 11l6-6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </span>
+                <StatCard label="Equal Opportunity" value={after.equalOpportunity} tone="text-jscolors-accent-teal" delay={360} accentColor="#3DDBD9" />
+                <UpArrow />
               </div>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
+          {/* Animated connector pill */}
           <motion.div
             aria-hidden="true"
             className="hidden md:flex pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-3"
@@ -151,9 +270,20 @@ export default function MitigationSection({ fileId }) {
             </div>
             <div className="h-[2px] w-20 bg-gradient-to-r from-jscolors-accent-teal via-jscolors-accent-violet to-jscolors-accent-green/0" />
           </motion.div>
-        </div>
+        </motion.div>
 
-        <div className="mt-4 card">
+        {/* Improvement Line Chart */}
+        <motion.div
+          className="mt-4 card"
+          variants={sectionVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.1 }}
+          whileHover={{
+            boxShadow: '0 0 28px -6px rgba(124,111,247,0.2)',
+            transition: { type: 'spring', stiffness: 200 }
+          }}
+        >
           <div className="flex items-center justify-between gap-4">
             <div>
               <div className="text-lg font-semibold text-jscolors-text-primary">Improvement Overview</div>
@@ -169,14 +299,21 @@ export default function MitigationSection({ fileId }) {
                 <XAxis dataKey="metric" tickLine={false} axisLine={false} tick={{ fill: '#9B9BC0', fontSize: 12 }} interval={0} angle={-10} height={70} />
                 <YAxis tickLine={false} axisLine={false} tick={{ fill: '#9B9BC0', fontSize: 12 }} domain={[0, 100]} />
                 <Tooltip content={<DarkTooltip />} />
-                <Line type="monotone" dataKey="before" name="Before" stroke="#FF4757" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="after" name="After" stroke="#3DDBD9" strokeWidth={2} dot={false} />
+                <Line
+                  type="monotone" dataKey="before" name="Before"
+                  stroke="#FF4757" strokeWidth={2} dot={false}
+                  isAnimationActive animationDuration={1200} animationEasing="ease-out"
+                />
+                <Line
+                  type="monotone" dataKey="after" name="After"
+                  stroke="#3DDBD9" strokeWidth={2} dot={false}
+                  isAnimationActive animationDuration={1200} animationBegin={200} animationEasing="ease-out"
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </motion.div>
       </div>
     </section>
   )
 }
-

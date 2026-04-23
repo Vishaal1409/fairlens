@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Flame, Info } from 'lucide-react';
+import { Flame, Info, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
 
 const groups = ['Male', 'Female', 'Non-Binary'];
 
@@ -12,6 +12,7 @@ const getStatus = (value) => {
         text: '#1D9E75',
         border: 'rgba(29, 158, 117, 0.35)',
         label: 'Fair',
+        icon: CheckCircle2,
         glow: '0 0 12px rgba(29, 158, 117, 0.2)',
     };
     if (value >= 0.5) return {
@@ -20,6 +21,7 @@ const getStatus = (value) => {
         text: '#EF9F27',
         border: 'rgba(239, 159, 39, 0.35)',
         label: 'Warning',
+        icon: AlertTriangle,
         glow: '0 0 12px rgba(239, 159, 39, 0.2)',
     };
     return {
@@ -28,6 +30,7 @@ const getStatus = (value) => {
         text: '#E24B4A',
         border: 'rgba(226, 75, 74, 0.35)',
         label: 'Biased',
+        icon: XCircle,
         glow: '0 0 12px rgba(226, 75, 74, 0.2)',
     };
 };
@@ -64,8 +67,8 @@ const CellTooltip = ({ metric, group, score, status, position }) => (
             <p style={{ fontSize: '12px', color: '#e3e2e3', fontWeight: 600, margin: '0 0 2px' }}>
                 {metric.replace(/_/g, ' ')}
             </p>
-            <p style={{ fontSize: '11px', color: '#888780', margin: 0 }}>
-                {group}: <span style={{ color: '#cac4d0', fontWeight: 600, fontFamily: 'monospace' }}>
+            <p style={{ fontSize: '11px', color: '#8B93A8', margin: 0 }}>
+                {group}: <span style={{ color: '#E8EAF0', fontWeight: 600, fontFamily: 'monospace' }}>
                     {Math.round(score * 100)}%
                 </span>
             </p>
@@ -83,7 +86,7 @@ const BiasHeatmap = ({ metrics }) => {
     // Guard: metrics must be a non-null object with keys
     if (!metrics || typeof metrics !== 'object' || Object.keys(metrics).length === 0) {
         return (
-            <div style={{ padding: '24px', color: '#64748b', textAlign: 'center', background: '#1b1c1d', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="glass rounded-3xl p-10 text-center font-mono text-[11px] uppercase tracking-[0.3em] text-obs-dim">
                 Heatmap data unavailable
             </div>
         );
@@ -109,48 +112,39 @@ const BiasHeatmap = ({ metrics }) => {
         <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.15 }}
-            className="relative bg-[#1b1c1d] border border-white/[0.06] rounded-2xl overflow-hidden
-                       transition-all duration-300 hover:border-white/[0.1]
-                       hover:shadow-[0_8px_32px_-8px_rgba(107,47,191,0.1)]"
+            transition={{ type: 'spring', stiffness: 200, damping: 22 }}
+            className="glass frame-mark relative rounded-3xl overflow-hidden transition-colors duration-300"
         >
             {/* Top accent line */}
-            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#6b2fbf]/30 to-transparent" />
+            <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#5BC0EB]/30 to-transparent" />
 
             <div className="p-6 sm:p-8">
                 {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
                     <div className="flex items-start gap-3">
-                        <div className="p-2.5 rounded-xl bg-[#6b2fbf]/10 border border-[#6b2fbf]/20 flex-shrink-0">
-                            <Flame size={16} className="text-[#6b2fbf]" />
+                        <div className="p-2.5 rounded-xl bg-[#5BC0EB]/10 border border-[#5BC0EB]/20 flex-shrink-0">
+                            <Flame size={16} className="text-[#5BC0EB]" />
                         </div>
                         <div>
                             <h3 className="text-[16px] font-semibold text-white tracking-tight mb-0.5">
                                 Intersectional Bias Heatmap
                             </h3>
-                            <p className="text-[12px] text-[#888780] leading-relaxed">
+                            <p className="text-[12px] text-[#8B93A8] leading-relaxed">
                                 Cross-group fairness analysis across protected demographic attributes
                             </p>
                         </div>
                     </div>
 
                     {/* Legend */}
-                    <div className="flex items-center gap-3 flex-shrink-0">
+                    <div className="flex items-center gap-3 flex-shrink-0" role="list" aria-label="Status legend">
                         {[
-                            { label: 'Fair ≥70%', color: '#1D9E75' },
-                            { label: 'Warning', color: '#EF9F27' },
-                            { label: 'Biased <50%', color: '#E24B4A' },
-                        ].map(l => (
-                            <div key={l.label} className="flex items-center gap-1.5">
-                                <div
-                                    className="w-2.5 h-2.5 rounded flex-shrink-0"
-                                    style={{
-                                        backgroundColor: l.color,
-                                        opacity: 0.8,
-                                        boxShadow: `0 0 6px ${l.color}30`,
-                                    }}
-                                />
-                                <span className="text-[10px] text-[#888780] font-medium">{l.label}</span>
+                            { label: 'Fair ≥70%', color: '#1D9E75', Icon: CheckCircle2 },
+                            { label: 'Warning', color: '#EF9F27', Icon: AlertTriangle },
+                            { label: 'Biased <50%', color: '#E24B4A', Icon: XCircle },
+                        ].map(({ label, color, Icon }) => (
+                            <div key={label} className="flex items-center gap-1.5" role="listitem">
+                                <Icon size={12} style={{ color }} aria-hidden="true" />
+                                <span className="text-[10px] text-[#8B93A8] font-medium">{label}</span>
                             </div>
                         ))}
                     </div>
@@ -166,7 +160,7 @@ const BiasHeatmap = ({ metrics }) => {
                         <div /> {/* Empty corner */}
                         {groups.map(g => (
                             <div key={g} className="text-center">
-                                <span className="text-[10px] text-[#888780] uppercase tracking-widest font-semibold">
+                                <span className="text-[10px] text-[#8B93A8] uppercase tracking-widest font-semibold">
                                     {g}
                                 </span>
                             </div>
@@ -175,26 +169,30 @@ const BiasHeatmap = ({ metrics }) => {
 
                     {/* Rows */}
                     {groupData.map(({ metric, label, scores }, rowIdx) => (
-                        <motion.div
+                        <div
                             key={metric}
-                            initial={{ opacity: 0, x: -12 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ duration: 0.4, delay: 0.1 + rowIdx * 0.06 }}
                             className="grid gap-2 mb-2"
                             style={{ gridTemplateColumns: `180px repeat(${groups.length}, 1fr)` }}
                         >
                             {/* Metric label */}
-                            <div className="flex items-center h-14 px-3">
-                                <span className="text-[12px] text-[#cac4d0] font-medium capitalize truncate">
+                            <motion.div
+                                className="flex items-center h-14 px-3"
+                                initial={{ opacity: 0, x: -10 }}
+                                whileInView={{ opacity: 1, x: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ type: 'spring', stiffness: 200, damping: 22, delay: rowIdx * 0.07 }}
+                            >
+                                <span className="text-[12px] text-[#E8EAF0] font-medium capitalize truncate">
                                     {label}
                                 </span>
-                            </div>
+                            </motion.div>
 
-                            {/* Score cells */}
+                            {/* Score cells — sequential fade-in */}
                             {scores.map((score, colIdx) => {
                                 const status = getStatus(score);
                                 const cellKey = `${metric}-${colIdx}`;
                                 const isHovered = hovered === cellKey;
+                                const cellIndex = rowIdx * groups.length + colIdx;
 
                                 return (
                                     <motion.div
@@ -202,8 +200,14 @@ const BiasHeatmap = ({ metrics }) => {
                                         onMouseEnter={() => setHovered(cellKey)}
                                         onMouseLeave={() => setHovered(null)}
                                         onMouseMove={handleMouseMove}
-                                        whileHover={{ scale: 1.03 }}
-                                        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                                        initial={{ opacity: 0, scale: 0.8 }}
+                                        whileInView={{ opacity: 1, scale: 1 }}
+                                        viewport={{ once: true }}
+                                        whileHover={{ scale: 1.06 }}
+                                        transition={{
+                                            opacity: { type: 'spring', stiffness: 200, damping: 20, delay: cellIndex * 0.04 },
+                                            scale: { type: 'spring', stiffness: 400, damping: 25 },
+                                        }}
                                         className="relative flex flex-col items-center justify-center h-14 rounded-xl cursor-default"
                                         style={{
                                             background: isHovered ? status.bgHover : status.bg,
@@ -215,16 +219,18 @@ const BiasHeatmap = ({ metrics }) => {
                                         <span
                                             className="text-[16px] font-bold tracking-tight"
                                             style={{ color: status.text }}
+                                            aria-label={`${metric.replace(/_/g, ' ')} for ${groups[colIdx]}: ${Math.round(score * 100)} percent, ${status.label}`}
                                         >
                                             {Math.round(score * 100)}%
                                         </span>
-                                        <span className="text-[9px] font-medium uppercase tracking-wider mt-0.5" style={{ color: status.text, opacity: 0.7 }}>
+                                        <span className="inline-flex items-center gap-1 text-[9px] font-medium uppercase tracking-wider mt-0.5" style={{ color: status.text, opacity: 0.75 }}>
+                                            <status.icon size={9} aria-hidden="true" />
                                             {status.label}
                                         </span>
                                     </motion.div>
                                 );
                             })}
-                        </motion.div>
+                        </div>
                     ))}
                 </div>
 
@@ -250,11 +256,13 @@ const BiasHeatmap = ({ metrics }) => {
 
                 {/* Footer insight */}
                 <div className="mt-6 flex items-start gap-2.5 p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.05]">
-                    <Info size={14} className="text-[#888780] mt-0.5 flex-shrink-0" />
-                    <p className="text-[11px] text-[#888780] leading-[1.7]">
-                        This matrix shows how fairness metrics vary across demographic groups.
-                        Red cells indicate significant disparities requiring mitigation.
-                        Hover over cells for detailed breakdowns.
+                    <Info size={14} className="text-[#8B93A8] mt-0.5 flex-shrink-0" aria-hidden="true" />
+                    <p className="text-[11px] text-[#8B93A8] leading-[1.7]">
+                        <span className="text-[#E8EAF0] font-semibold">Illustrative view.</span>{' '}
+                        Group-level scores shown here are derived from the aggregate metric
+                        as a visual approximation. For true intersectional analysis, connect
+                        the backend <code className="font-mono text-[#E8EAF0]">/analyze</code>{' '}
+                        endpoint with per-group labels. Hover over cells for details.
                     </p>
                 </div>
             </div>
