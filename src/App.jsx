@@ -1,24 +1,30 @@
 import { HashRouter, Routes, Route } from 'react-router-dom'
-import Layout from './components/Layout'
-import UploadPage from './pages/UploadPage'
-import ResultsPage from './pages/ResultsPage'
-import ExplainabilityPage from './pages/ExplainabilityPage'
-import MitigationPage from './pages/MitigationPage'
-import ScorecardPage from './pages/ScorecardPage'
+import ErrorBoundary from './ErrorBoundary'
+import Navbar from './components/Navbar'
+import Hero from './components/Hero'
+import HowItWorks from './components/HowItWorks'
+import UploadSection from './components/UploadSection'
+import ResultsDashboard from './components/ResultsDashboard'
+import MitigationSection from './components/MitigationSection'
+import ExplainSection from './components/ExplainSection'
+import AboutSection from './components/AboutSection'
 
 function App() {
   return (
-    <HashRouter>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<UploadPage />} />
-          <Route path="/results" element={<ResultsPage />} />
-          <Route path="/explain" element={<ExplainabilityPage />} />
-          <Route path="/mitigate" element={<MitigationPage />} />
-          <Route path="/scorecard" element={<ScorecardPage />} />
-        </Routes>
-      </Layout>
-    </HashRouter>
+    <ErrorBoundary>
+      <HashRouter>
+        <Navbar />
+        <main>
+          <Hero />
+          <HowItWorks />
+          <UploadSection />
+          <ResultsDashboard />
+          <MitigationSection />
+          <ExplainSection />
+          <AboutSection />
+        </main>
+      </HashRouter>
+    </ErrorBoundary>
   )
 }
 
