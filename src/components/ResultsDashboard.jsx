@@ -212,12 +212,12 @@ export default function ResultsDashboard({ data }) {
         ? Object.entries(rawMetrics)
             .filter(([, v]) => typeof v === 'number')
             .map(([key, value]) => ({
-            name: key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
-            value,
-            threshold: 0.8,
-            description: getMetricDescription(key),
-          }))
-
+              name: key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+              value,
+              threshold: 0.8,
+              description: getMetricDescription(key),
+            }))
+        : fallbackArray
   const overall = Math.round(
     data?.overall_fairness_score ??
     data?.overallScore ??
