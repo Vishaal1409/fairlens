@@ -10,16 +10,22 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.routes import router
 
+# root_path tells FastAPI it is mounted at /backend (for docs, redirects, OpenAPI)
 app = FastAPI(
     title="FairLens API",
     version="0.2.0",
 )
 
-# Pin allowed origins. Override via CORS_ORIGINS env var (comma-separated).
+# TODO (team): Confirm with Ishitha/Shruthika if there are additional
+# frontend URLs (e.g. Vercel / Netlify). Add them to CORS_ORIGINS env var on Render.
+#
+# Override at runtime via comma-separated CORS_ORIGINS env var, e.g.:
+#   CORS_ORIGINS=https://fairlens.vercel.app,https://fairlens.netlify.app
 _default_origins = [
-    "https://vishaal1409.github.io",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
+    "https://vishaal1409.github.io",  # deployed GitHub Pages frontend
+    "http://localhost:5173",          # Vite dev server
+    "http://127.0.0.1:5173",         # Vite alt address
+    "http://localhost:3000",          # fallback local
 ]
 _origins_env = os.getenv("CORS_ORIGINS")
 _allowed_origins = (
@@ -33,7 +39,12 @@ app.add_middleware(
     allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_headers=[
+        "Content-Type",       # JSON bodies + multipart/form-data (upload, upload-model)
+        "Accept",             # response format negotiation
+        "Authorization",      # future auth header
+        "X-Requested-With",   # sent by some XHR/Axios clients
+    ],
 )
 
 # Mount all routes from api/routes.py
