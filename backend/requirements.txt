@@ -8,3 +8,4 @@ numpy==1.26.4
 shap==0.45.0
 aif360==0.6.1
 scipy==1.13.0
+fairlearn==0.10.0
