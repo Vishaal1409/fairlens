@@ -166,7 +166,19 @@ function MetricRow({ m, index }) {
     </motion.div>
   )
 }
-
+function getMetricDescription(key) {
+  const descriptions = {
+    demographic_parity: 'Does the model approve people at equal rates regardless of gender, race, or age?',
+    disparate_impact: 'Are minority groups getting favorable outcomes at least 80% as often as majority groups?',
+    equal_opportunity: 'When someone deserves a good outcome, are all groups equally likely to receive it?',
+    calibration: 'When the model predicts positive, is it equally accurate across all groups?',
+    predictive_parity: 'Does a positive prediction mean the same thing for everyone, regardless of their background?',
+    equalized_odds: 'Are correct and incorrect predictions distributed equally across all groups?',
+    theil_index: 'How much overall inequality exists in the model outcomes across groups?',
+    consistency: 'Do similar people get similar predictions regardless of their protected attributes?',
+  }
+  return descriptions[key.toLowerCase()] || 'Measures fairness across demographic groups.'
+}
 /* ═════════════════════════════════════════════════════════════════════════
    RESULTS DASHBOARD
    ════════════════════════════════════════════════════════════════════════ */
@@ -200,12 +212,11 @@ export default function ResultsDashboard({ data }) {
         ? Object.entries(rawMetrics)
             .filter(([, v]) => typeof v === 'number')
             .map(([key, value]) => ({
-              name: key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
-              value,
-              threshold: 0.8,
-              description: '',
-            }))
-        : fallbackArray
+            name: key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+            value,
+            threshold: 0.8,
+            description: getMetricDescription(key),
+          }))
 
   const overall = Math.round(
     data?.overall_fairness_score ??
