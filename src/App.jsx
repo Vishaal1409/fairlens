@@ -1,4 +1,3 @@
-import { HashRouter, Routes, Route } from 'react-router-dom'
 import ErrorBoundary from './ErrorBoundary'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
@@ -12,18 +11,16 @@ import AboutSection from './components/AboutSection'
 function App() {
   return (
     <ErrorBoundary>
-      <HashRouter>
-        <Navbar />
-        <main>
-          <Hero />
-          <HowItWorks />
-          <UploadSection />
-          <ResultsDashboard />
-          <MitigationSection />
-          <ExplainSection />
-          <AboutSection />
-        </main>
-      </HashRouter>
+      <Navbar />
+      <main>
+        <Hero />
+        <HowItWorks />
+        <UploadSection />
+        <ResultsDashboard />
+        <MitigationSection />
+        <ExplainSection />
+        <AboutSection />
+      </main>
     </ErrorBoundary>
   )
 }

@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 
 const links = [
-  { label: 'Method',   href: '/#how' },
-  { label: 'Audit',    href: '/#audit' },
-  { label: 'Mitigate', href: '/#mitigate' },
-  { label: 'About',    href: '/#about' },
+  { label: 'Method',   href: '#how' },
+  { label: 'Audit',    href: '#audit' },
+  { label: 'Mitigate', href: '#mitigate' },
+  { label: 'About',    href: '#about' },
 ]
 
 export default function Navbar() {
