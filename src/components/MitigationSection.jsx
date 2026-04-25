@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 import { mitigateFile } from '../api'
+import MitigationCodeExport from './MitigationCodeExport'
 
 /* ── Count-up hook ─────────────────────────────────────────────────────── */
 function useCountUp(target, duration = 1100, delay = 0, enabled = true) {
@@ -313,6 +314,9 @@ export default function MitigationSection({ fileId }) {
             </ResponsiveContainer>
           </div>
         </motion.div>
+      </div>
+    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '0 2rem 4rem' }}>
+        <MitigationCodeExport />
       </div>
     </section>
   )
