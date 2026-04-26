@@ -1,6 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { analyzeFile, uploadFile } from '../api'
 
 function uniq(arr) {
@@ -15,7 +14,6 @@ function formatBytes(b = 0) {
 }
 
 export default function UploadSection({ onUpload, onAnalysis }) {
-  const navigate = useNavigate()
   const inputRef = useRef(null)
   const [file, setFile] = useState(null)
   const [fileMeta, setFileMeta] = useState(null)
@@ -95,13 +93,6 @@ export default function UploadSection({ onUpload, onAnalysis }) {
       clearTimeout(timeoutId)
       const data = res.data ?? res
       onAnalysis?.(data)
-      navigate('/results', {
-        state: {
-          metrics: data?.metrics ?? data,
-          shapValues: data?.shap_values ?? data?.shapValues ?? null,
-          fileId: id,
-        },
-      })
     } catch (e) {
       clearTimeout(timeoutId)
       if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') {
