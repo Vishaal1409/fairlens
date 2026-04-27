@@ -1,170 +1,174 @@
-# FairLens — Open-source AI Fairness Audit Platform
+# FairLens ⚖️
 
 ![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
 ![Python Version](https://img.shields.io/badge/python-3.11-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Robot Framework Tests](https://img.shields.io/badge/tests-passing-brightgreen)
 
-## What is FairLens?
-FairLens is an end-to-end fairness auditing platform designed to seamlessly unpack machine learning models and structurally analyze underlying bias. It enables developers and data scientists to detect discrimination rapidly, natively explain feature logic, and immediately apply mitigation fixes against protected demographic datasets.
+> A precision instrument for auditing machine-learning fairness. Measure bias, reason about causes with SHAP, and apply verifiable mitigation — in a single, unhurried workflow.
 
 🌐 **Live App:** https://vishaal1409.github.io/fairlens/
+🧪 **Live API:** https://fairlens-08o6.onrender.com/docs
 
-🧪 **Live Swagger UI:** https://fairlens-08o6.onrender.com/docs
+---
 
-## Key features
-- **Automated Bias Detection:** Upload local datasets or live models to instantly flag underlying inequalities across protected attributes.
-- **Explainability Integrations:** Compute direct feature influence out-of-the-box leveraging integrated SHAP and LIME modeling.
-- **Active Bias Mitigation:** Programmatically resolve statistical disparity through immediate AIF360 Reweighing modifications mapping 'before' and 'after' scopes.
-- **Actionable Visualizations:** Explore live-computation metric scorecards, dynamic heatmaps, and plain-language metric explanations across a modern React dashboard.
-- **Production-Ready Security:** Hardened FastAPI infrastructure configured tightly with Docker containerization, rigorous validations, structured payloads, and automated CI workflows.
+## What is FairLens?
 
-## Supported bias metrics
-| Metric Name | What it measures |
-|---|---|
-| **Demographic Parity** | Evaluates if the probability of a positive outcome is identical across all demographic groups. |
-| **Equal Opportunity** | Measures whether individuals who qualify for a positive outcome have an equal chance of receiving it regardless of demographic class. |
-| **Disparate Impact** | Computes the precise ratio of favorable outcomes between unprivileged and privileged groups. |
-| **Calibration** | Checks if the predicted probability of a positive outcome matches the actual observed proportion correctly. |
-| **Predictive Parity** | Assesses whether the predictive precision is consistently equal among all categorized minority/majority demographic traits. |
-| **Equalized Odds** | Enforces that both true positive rates and false positive rates remain identical across all separated groups. |
-| **Treatment Equality** | Analyzes the comparative ratios of false negatives and false positives targeting an equilibrium of model mistakes. |
-| **Disparate Impact Remover** | Pre-processes underlying data to mask disparities while maintaining foundational predictive ranking accuracy. |
+FairLens is an open-source AI Fairness Audit Platform that lets organizations upload any dataset and instantly get a comprehensive bias report with actionable fixes. No ML expertise required.
 
-## Tech stack
+---
+
+## Features
+
+- **5+ Bias Metrics** — Demographic Parity, Disparate Impact, Equal Opportunity, Calibration, Predictive Parity
+- **SHAP Explainability** — Understand WHY a model is biased with feature importance charts
+- **AIF360 Reweighing Mitigation** — See before/after bias scores after applying fixes
+- **One-click Python Export** — Copy ready-to-run mitigation code for your own environment
+- **Beautiful Dashboard** — Built with React, Framer Motion, and Recharts
+
+---
+
+## Supported Fairness Metrics
+
+| Metric | What it means in plain English |
+|--------|-------------------------------|
+| **Demographic Parity** | Does the model approve people at equal rates regardless of gender or race? |
+| **Disparate Impact** | Are minority groups getting favorable outcomes at least 80% as often as majority groups? |
+| **Equal Opportunity** | When someone deserves a good outcome, are all groups equally likely to receive it? |
+| **Calibration** | When the model predicts positive, is it equally accurate across all groups? |
+| **Predictive Parity** | Does a positive prediction mean the same thing for everyone regardless of background? |
+
+---
+
+## Tech Stack
+
 | Layer | Technologies |
-|---|---|
-| **Backend** | Python 3.11, FastAPI, Uvicorn, AIF360, Fairlearn, SHAP, LIME, scikit-learn, Pandas, NumPy, SQLite |
-| **Frontend** | React.js, Vite, TailwindCSS, Recharts, react-dropzone, axios |
-| **Testing** | Robot Framework, robotframework-requests, robotframework-jsonlibrary |
-| **DevOps** | GitHub Actions, Render/Railway, Docker |
+|-------|-------------|
+| **Frontend** | React 19, Vite, TailwindCSS, Recharts, Framer Motion, Axios |
+| **Backend** | Python 3.11, FastAPI, Uvicorn, AIF360, SHAP, scikit-learn, Pandas, NumPy |
+| **Testing** | Robot Framework, Postman |
+| **DevOps** | Docker, Render (backend), GitHub Pages (frontend) |
 
-## Getting started — Local setup
+---
 
-### Backend
-1. Ensure your system meets the prerequisites: **Python 3.11**, **pip**, and **Git**.
-2. Clone the repository and navigate into the main directory.
-   ```bash
-   git clone https://github.com/Vishaal1409/fairlens.git
-   cd fairlens
-   ```
-3. Initialize the isolated Python virtual environment.
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows use: venv\Scripts\activate
-   ```
-4. Install all backend modules.
-   ```bash
-   pip install -r backend/requirements.txt
-   ```
-5. Ignite the backend API server locally.
-   ```bash
-   uvicorn backend.main:app --reload
-   ```
+## Project Structure
 
-### Frontend
-1. Ensure your system meets the prerequisites: **Node.js LTS** and **npm**.
-2. Navigate directly into the frontend scope.
-   ```bash
-   cd fairlens-frontend
-   ```
-3. Install the web packages natively.
-   ```bash
-   npm install
-   ```
-4. Start the Vite hot-reloading development server.
-   ```bash
-   npm run dev
-   ```
-
-## Running with Docker
-FairLens natively supports rapid containerized infrastructure out of the box leveraging our multi-stage builds. To execute the primary API instance dynamically:
-```bash
-docker compose up --build
-```
-*Note: Make sure your Docker daemon/Desktop is active before triggering the build.*
-
-### Mounting persistent uploads
-The default `docker-compose.yml` is pre-configured to strictly map your local `./uploads/` directory to the container. Any assessment records uploaded during continuous deployment instances will survive restart wipes indefinitely.
-
-### Overwriting environment variables
-If you want to inject flags (like debugging modes), prefix the compose initiation natively:
-```bash
-DEBUG=false docker compose up -d
-```
-
-### Stopping instances
-Halt and eject the running containers seamlessly via:
-```bash
-docker compose down
-```
-
-## API reference
-| Method | Path | Description | Request | Response |
-|---|---|---|---|---|
-| **GET** | `/health` | Pings the system core dependencies mapping active framework versions. | None | JSON payload displaying statuses. |
-| **POST** | `/upload` | Stashes uploaded CSV files or PKL/Joblib models indexing data securely. | `multipart/form-data` | `file_id` UUID hash and parsed JSON column metrics. |
-| **POST** | `/analyze` | Extracts tracked CSV payloads testing all 8 fairness thresholds physically. | JSON strictly passing `file_id` and indexing columns. | Bias scorecard payload JSON structure. |
-| **POST** | `/explain` | Injects live data instances pushing out SHAP value feature computations globally. | JSON mapping `file_id` and `model_id`. | Dictionary ranking mapped JSON values. |
-| **POST** | `/mitigate` | Restructures raw datasets enforcing `AIF360 Reweighing` mitigation algorithms over the dataset traits. | JSON containing the `file_id` and structural keys. | Before/After JSON dictionary metrics. |
-
-## Running tests
-All FairLens structural QA metrics run off `Robot Framework` tests evaluating accurate endpoint structures dynamically. To test your iterations locally:
-1. Load test module requirements.
-   ```bash
-   pip install -r tests/requirements-test.txt
-   ```
-2. Run backend validation suites dynamically tracking output configurations into `results/`.
-   ```bash
-   robot --outputdir results tests/
-   ```
-*Suites evaluated map file rejection caps (`bulk_large_file.robot`), foundational file assertions (`upload_validation.robot`), and precise standardized JSON schema responses logic (`error_payload_shape.robot`).*
-
-To perform programmatic logic through graphical validation models directly, reference the formal Postman collection: `tests/postman/fairlens_postman.json`.
-
-## Project structure
 ```text
 fairlens/
-├── .github/
-│   └── workflows/
+├── .github/workflows/       ← GitHub Actions CI
 ├── backend/
 │   ├── api/
+│   │   └── routes.py        ← All FastAPI endpoints
 │   ├── ml/
-│   ├── main.py
-│   └── requirements.txt
-├── fairlens-frontend/
-│   ├── public/
-│   ├── src/
-│   ├── package.json
-│   └── vite.config.js
-├── tests/
+│   │   └── analyzer.py      ← Fairness metrics + SHAP + AIF360
+│   ├── main.py              ← FastAPI app entry point
+│   ├── requirements.txt
+│   └── Dockerfile
+├── src/
+│   ├── components/          ← All React UI components
+│   │   ├── Hero.jsx
+│   │   ├── UploadSection.jsx
+│   │   ├── ResultsDashboard.jsx
+│   │   ├── MitigationSection.jsx
+│   │   ├── MitigationCodeExport.jsx
+│   │   ├── ExplainSection.jsx
+│   │   ├── SHAPChart.jsx
+│   │   ├── BiasHeatmap.jsx
+│   │   └── ...
+│   ├── App.jsx
+│   ├── main.jsx
+│   └── api.js               ← Axios API client
+├── tests/                   ← Robot Framework test suites
+│   ├── upload_validation.robot
+│   ├── analyze_endpoint.robot
+│   ├── mitigate_endpoint.robot
 │   ├── fixtures/
-│   ├── postman/
-│   ├── resources/
-│   └── README.md
+│   └── postman/
+├── assets/                  ← Built frontend assets (GitHub Pages)
+├── dist/                    ← Vite build output
+├── deploy.sh                ← One-command deploy script
 ├── docker-compose.yml
-├── CHANGELOG.md
 └── README.md
 ```
 
-## Contributing
-Contributors must create isolated branches enforcing structured naming conventions based on the requested modifications: 
-`feat/yourname`
+---
 
-When your code satisfies operational metrics, open a Pull Request. **All PRs must be manually reviewed by Vishaal before the merge gets finalized into `main`.**
+## Local Setup
 
-Follow strict standard commit message conventions natively:
-- `feat(...)`: Added features directly matching issues.
-- `fix(...)`: Bug fixes resolving active breakages.
-- `docs(...)`: README, CHANGELOG, or code-block modifications.
+### Backend
+
+```bash
+# Clone the repo
+git clone https://github.com/Vishaal1409/fairlens.git
+cd fairlens
+
+# Create virtual environment
+cd backend
+python3 -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Start the server
+uvicorn main:app --reload
+```
+
+Server runs at **http://localhost:8000**
+Swagger UI at **http://localhost:8000/docs**
+
+### Frontend
+
+```bash
+# From repo root
+npm install
+npm run dev
+```
+
+---
+
+## Docker
+
+```bash
+docker compose up --build
+```
+
+---
+
+## API Reference
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Health check |
+| POST | `/upload` | Upload CSV, returns file_id |
+| POST | `/analyze` | Run fairness metrics |
+| POST | `/explain` | SHAP feature importances |
+| POST | `/mitigate` | Apply AIF360 reweighing |
+| POST | `/infer-fairness` | Run model predictions + fairness check |
+
+Full contract: [API_CONTRACT.md](./API_CONTRACT.md)
+
+---
+
+## Running Tests
+
+```bash
+pip install -r tests/requirements-test.txt
+robot --outputdir results tests/
+```
+
+---
 
 ## Team
-| Name | Role | Responsibility |
-|---|---|---|
-| **Vishaal** | Team Lead & Backend Developer | ML pipeline scope, statistical accuracy, GitHub management |
-| **Arun** | Backend Developer | Python API architecture, Server deployment configurations, Docker, Automated Testing |
-| **Shruthika** | Frontend Developer | Translating endpoints into data visualizations and mapping chart components |
-| **Ishitha** | UI/UX & Frontend Developer | Structural layout design schemas, UI styling, formal presentation materials |
+
+| Name | Role | What they built |
+|------|------|----------------|
+| **Vishaal** | Team Lead & Backend | ML pipeline, fairness metrics, Render deployment, SHAP integration, GitHub management |
+| **Arun** | Backend & DevOps | FastAPI endpoints, Docker, Robot Framework tests |
+| **Shruthika** | Frontend & Data Viz | Rebuilt entire UI into the Obsidian Observatory design using React + Cursor, all chart components, API wiring |
+| **Ishitha** | UI/UX & Presentation | Layout design, demo video, project deck |
+
+---
 
 ## License
+
 MIT

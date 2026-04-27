@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 const links = [
-  { label: 'Method',   href: '/#how' },
-  { label: 'Audit',    href: '/#audit' },
-  { label: 'Mitigate', href: '/#mitigate' },
-  { label: 'About',    href: '/#about' },
+  { label: 'Method',   href: '#how' },
+  { label: 'Audit',    href: '#audit' },
+  { label: 'Mitigate', href: '#mitigate' },
+  { label: 'About',    href: '#about' },
 ]
 
 export default function Navbar() {
@@ -84,7 +84,7 @@ export default function Navbar() {
 
           {/* CTA */}
           <a
-            href="/#audit"
+            href="#audit"
             className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-2 text-[12px] text-obs-text backdrop-blur-md transition hover:border-obs-cerulean/50 hover:bg-obs-cerulean/10"
           >
             <span className="font-mono tracking-[0.2em] uppercase">Start audit</span>

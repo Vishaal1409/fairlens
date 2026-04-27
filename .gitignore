@@ -8,7 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-dist
+
 dist-ssr
 *.local
 
@@ -50,7 +50,3 @@ tests/fixtures/large_*.csv
 # Project documents (local reference only — not for version control)
 *.docx
 node_modules
-
-# Local tooling / automation artifacts
-.claude/
-screenshots/
