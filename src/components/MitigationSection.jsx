@@ -121,6 +121,8 @@ export default function MitigationSection({ fileId }) {
   const [payload, setPayload] = useState(null)
 
   useEffect(() => {
+    // Fix #3: reset stale payload immediately when dataset changes
+    setPayload(null)
     let alive = true
     async function run() {
       if (!fileId) return
@@ -150,22 +152,26 @@ export default function MitigationSection({ fileId }) {
     equalOpportunity: 0.76,
   }
 
+  // Fix #3: derive improvement rows purely from before/after — no hardcoded stubs
   const improvement = useMemo(() => {
-    const rows = [
-      { metric: 'Disparate Impact', before: before.disparateImpact, after: after.disparateImpact },
-      { metric: 'Demographic Parity', before: before.demographicParity, after: after.demographicParity },
-      { metric: 'Equal Opportunity', before: before.equalOpportunity, after: after.equalOpportunity },
-      { metric: 'Equalized Odds', before: 0.66, after: 0.78 },
-      { metric: 'Statistical Parity Diff', before: 0.61, after: 0.73 },
-      { metric: 'Consistency', before: 0.81, after: 0.86 },
-      { metric: 'Theil Index', before: 0.85, after: 0.90 },
-      { metric: 'Average Odds Diff', before: 0.58, after: 0.72 },
-    ]
-    return rows.map((r) => ({
-      metric: r.metric,
-      before: Math.round((r.before <= 1 ? r.before : r.before / 100) * 100),
-      after: Math.round((r.after <= 1 ? r.after : r.after / 100) * 100),
-    }))
+    const metricKeys = Array.from(
+      new Set([
+        ...Object.keys(before),
+        ...Object.keys(after),
+      ])
+    )
+    return metricKeys.map((key) => {
+      const label = key
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (c) => c.toUpperCase())
+      const b = before[key] ?? 0
+      const a = after[key] ?? 0
+      return {
+        metric: label,
+        before: Math.round((b <= 1 ? b : b / 100) * 100),
+        after: Math.round((a <= 1 ? a : a / 100) * 100),
+      }
+    })
   }, [before, after])
 
   return (

@@ -5,6 +5,7 @@ import {
   Upload, ArrowLeft, TrendingUp, TrendingDown, Minus,
   BarChart3, Loader2, CheckCircle2, AlertTriangle, Zap,
   Scale, Target, Activity, ShieldCheck, GitCompare,
+  Sparkles, Info, FlaskConical,
 } from 'lucide-react'
 import { uploadFile, analyzeFile } from '../api'
 
@@ -249,6 +250,79 @@ function UploadPanel({ slot, state, onFile, onAttrChange, onTargetChange, disabl
   )
 }
 
+/* ─── Sub-tab panels ─── */
+
+function MitigateTab() {
+  return (
+    <motion.div
+      key="mitigate"
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      className="glass frame-mark rounded-3xl p-8 md:p-12 text-center space-y-6"
+    >
+      <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-obs-cerulean/30 bg-obs-cerulean/10">
+        <FlaskConical size={24} className="text-obs-cerulean" />
+      </span>
+      <h3 className="h-display text-[32px] leading-tight text-obs-text md:text-[42px]">
+        Bias <span className="italic text-obs-lumen">mitigation</span>.
+      </h3>
+      <p className="mx-auto max-w-[520px] text-[14px] leading-relaxed text-obs-dim">
+        Upload both datasets, run the comparison audit, then apply AIF360
+        post-processing calibration to mitigate detected bias across groups.
+        All parameter changes are logged to the audit record.
+      </p>
+      <div className="flex flex-wrap justify-center gap-6 pt-2 font-mono text-[10px] uppercase tracking-[0.28em] text-obs-ghost">
+        <span className="flex items-center gap-2"><ShieldCheck size={12} className="text-obs-aurora" /> Non-destructive</span>
+        <span className="flex items-center gap-2"><Sparkles size={12} className="text-obs-cerulean" /> AI-optimised</span>
+        <span className="flex items-center gap-2"><CheckCircle2 size={12} className="text-obs-lumen" /> Reversible</span>
+      </div>
+    </motion.div>
+  )
+}
+
+function AboutTab() {
+  const facts = [
+    ['Method', 'AIF360 Reweighing + post-processing calibration'],
+    ['Metrics', 'Demographic Parity · Equal Opportunity · Disparate Impact · Accuracy'],
+    ['Backend', 'FastAPI · Python 3.11 · scikit-learn'],
+    ['Frontend', 'React 18 · Vite · Framer Motion · Recharts'],
+    ['License', 'MIT · Open-source · Google Hackathon 2026'],
+  ]
+  return (
+    <motion.div
+      key="about"
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      className="glass frame-mark rounded-3xl p-8 md:p-12 space-y-8"
+    >
+      <div className="flex items-center gap-3">
+        <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-obs-lumen/30 bg-obs-lumen/10">
+          <Info size={18} className="text-obs-lumen" />
+        </span>
+        <h3 className="text-[22px] font-semibold text-obs-text">About FairLens</h3>
+      </div>
+      <p className="max-w-[640px] text-[14px] leading-relaxed text-obs-dim">
+        FairLens is an editorial-grade AI fairness auditing instrument. It ingests
+        tabular datasets, computes eight industry-standard fairness metrics, and
+        surfaces actionable mitigation pathways using IBM's AIF360 toolkit.
+      </p>
+      <ul className="space-y-3">
+        {facts.map(([k, v]) => (
+          <li key={k} className="flex items-start gap-4 font-mono text-[11px]">
+            <span className="w-24 shrink-0 uppercase tracking-[0.22em] text-obs-ghost">{k}</span>
+            <span className="h-px mt-2 flex-1 bg-white/8" />
+            <span className="text-obs-dim text-right max-w-[340px]">{v}</span>
+          </li>
+        ))}
+      </ul>
+    </motion.div>
+  )
+}
+
 /* ─── Initial panel state ─── */
 const initSlot = () => ({
   file: null, fileMeta: null, columns: [],
@@ -261,6 +335,8 @@ const initSlot = () => ({
    ═══════════════════════════════════════════════════ */
 export default function CompareTwoDatasets() {
   const navigate   = useNavigate()
+  // Fix #6: local state for sub-tab navigation
+  const [activeTab, setActiveTab] = useState('audit')
   const [slotA, setSlotA] = useState(initSlot())
   const [slotB, setSlotB] = useState(initSlot())
   const [comparing, setComparing] = useState(false)
@@ -392,7 +468,50 @@ export default function CompareTwoDatasets() {
           </div>
         </motion.header>
 
-        {/* ── Upload panels ── */}
+        {/* ── Sub-tab bar ── Fix #6 ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="mb-10 inline-flex rounded-2xl border border-white/[0.06] bg-white/[0.02] p-1 gap-1"
+        >
+          {[
+            { id: 'audit',   label: 'Audit',   icon: GitCompare },
+            { id: 'mitigate', label: 'Mitigate', icon: FlaskConical },
+            { id: 'about',   label: 'About',   icon: Info },
+          ].map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              id={`compare-tab-${id}`}
+              onClick={() => setActiveTab(id)}
+              className={[
+                'relative flex items-center gap-2 rounded-xl px-5 py-2.5 font-mono text-[11px] uppercase tracking-[0.28em] transition-all duration-200',
+                activeTab === id
+                  ? 'bg-obs-cerulean/20 text-obs-cerulean border border-obs-cerulean/30'
+                  : 'text-obs-ghost hover:text-obs-dim hover:bg-white/[0.03] border border-transparent',
+              ].join(' ')}
+            >
+              <Icon size={12} />
+              {label}
+              {activeTab === id && (
+                <motion.span
+                  layoutId="compare-tab-indicator"
+                  className="absolute inset-0 rounded-xl"
+                  style={{ boxShadow: '0 0 14px -4px rgba(91,192,235,0.4)' }}
+                />
+              )}
+            </button>
+          ))}
+        </motion.div>
+
+        {/* ── Tab content ── */}
+        <AnimatePresence mode="wait">
+          {activeTab === 'mitigate' && <MitigateTab key="mitigate" />}
+          {activeTab === 'about'    && <AboutTab    key="about"    />}
+        </AnimatePresence>
+
+        {/* ── Audit tab: upload + compare flow ── */}
+        {activeTab === 'audit' && (<>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -551,6 +670,7 @@ export default function CompareTwoDatasets() {
             </motion.div>
           )}
         </AnimatePresence>
+        </>)}  {/* end audit tab */}
       </div>
     </div>
   )

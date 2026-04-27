@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   BarChart,
@@ -34,6 +34,7 @@ function useCountUp(target, duration = 1200, delay = 0, enabled = true) {
   const [display, setDisplay] = useState(0)
   useEffect(() => {
     if (!enabled) return
+    setDisplay(0)
     let raf
     const timer = setTimeout(() => {
       const start = performance.now()
@@ -183,6 +184,15 @@ function getMetricDescription(key) {
    RESULTS DASHBOARD
    ════════════════════════════════════════════════════════════════════════ */
 export default function ResultsDashboard({ data }) {
+  // ── DEBUG: trace what data shape arrives from the API ──
+  console.log('[FairLens] ResultsDashboard received data:', data)
+
+  // ── Helper: convert a raw score (0–1 decimal OR 0–100 percent) to 0–100 ──
+  function toScore(v) {
+    if (typeof v !== 'number') return null
+    return v <= 1 ? Math.round(v * 100) : Math.round(v)
+  }
+
   // ── Normalize API response ────────────────────────────────────────────
   const isFlat =
     data && typeof data === 'object' && !Array.isArray(data) &&
@@ -218,17 +228,25 @@ export default function ResultsDashboard({ data }) {
               description: getMetricDescription(key),
             }))
         : fallbackArray
-  const overall = Math.round(
-    data?.overall_fairness_score ??
-    data?.overallScore ??
-    data?.score ??
-    data?.overall ??
+  // Fix: use toScore() to properly handle decimal (0–1) vs percent (0–100) from backend
+  const overall =
+    toScore(data?.overall_fairness_score) ??
+    toScore(data?.overallScore) ??
+    toScore(data?.score) ??
+    toScore(data?.overall) ??
     (isFlat
-      ? Object.values(data).filter(v => typeof v === 'number').reduce((a, b) => a + b, 0) /
-        (Object.values(data).filter(v => typeof v === 'number').length || 1) * 100
-      : 72
+      ? (() => {
+          const nums = Object.values(data).filter(v => typeof v === 'number')
+          const avg = nums.reduce((a, b) => a + b, 0) / (nums.length || 1)
+          return toScore(avg)
+        })()
+      : 0  // true idle state — no data at all
     )
-  )
+
+  // Fix #4/#5: derive a stable key from the data so React remounts the section
+  // and all whileInView / once:true animations re-fire on dataset swap
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const dataKey = useMemo(() => JSON.stringify(Object.keys(rawMetrics ?? {})) + String(overall), [data])
 
   const normalized = metrics.map((m) => {
     const v = typeof m.value === 'number' && m.value <= 1 ? m.value * 100 : Number(m.value) || 0
@@ -258,7 +276,7 @@ export default function ResultsDashboard({ data }) {
   const animatedDi = useCountUp(Math.round(di), 1000, 800)
 
   return (
-    <section id="results" className="bg-jscolors-deep py-24">
+    <section key={dataKey} id="results" className="bg-jscolors-deep py-24">
       <div className="mx-auto max-w-6xl px-5">
 
         {/* ── Hero Score Card ──────────────────────────────────────────── */}

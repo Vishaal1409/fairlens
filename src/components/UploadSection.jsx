@@ -92,7 +92,19 @@ export default function UploadSection({ onUpload, onAnalysis }) {
       const res = await analyzeFile(id, protectedAttr, targetCol)
       clearTimeout(timeoutId)
       const data = res.data ?? res
+      // ── DEBUG: log raw API response so we can confirm shape ──
+      console.log('[FairLens] FULL API RESPONSE (raw):', res)
+      console.log('[FairLens] FULL API RESPONSE (data):', data)
       onAnalysis?.(data)
+      // ── Fix #2: scroll to results section after analysis completes ──
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          document.getElementById('results')?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+          })
+        })
+      })
     } catch (e) {
       clearTimeout(timeoutId)
       if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') {
