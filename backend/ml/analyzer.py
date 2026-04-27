@@ -399,3 +399,29 @@ def analyze(df: pd.DataFrame, protected_col: str, label_col: str, predicted_col:
 
     logger.info("Fairness analysis complete. Metrics computed: %s", list(results.keys()))
     return results
+
+def mitigate(df, protected_col, label_col, predicted_col):
+    df_copy = df.copy()
+
+    # split groups
+    group_0 = df_copy[df_copy[protected_col] == 0]
+    group_1 = df_copy[df_copy[protected_col] == 1]
+
+    # calculate positive rates
+    rate_0 = group_0[predicted_col].mean()
+    rate_1 = group_1[predicted_col].mean()
+
+    # target = average rate
+    target_rate = (rate_0 + rate_1) / 2
+
+    # adjust group 0
+    mask_0 = df_copy[protected_col] == 0
+    flip_0 = np.random.rand(len(df_copy)) < abs(target_rate - rate_0)
+    df_copy.loc[mask_0 & flip_0, predicted_col] = 1
+
+    # adjust group 1
+    mask_1 = df_copy[protected_col] == 1
+    flip_1 = np.random.rand(len(df_copy)) < abs(target_rate - rate_1)
+    df_copy.loc[mask_1 & flip_1, predicted_col] = 0
+
+    return df_copy

@@ -5,11 +5,12 @@
   "type": "module",
   "homepage": "https://vishaal1409.github.io/fairlens",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "deploy": "gh-pages -d dist",
-    "lint": "eslint .",
-    "preview": "vite preview"
+  "dev": "vite",
+  "build": "vite build",
+  "predeploy": "npm run build",
+  "deploy": "gh-pages -d dist",
+  "lint": "eslint .",
+  "preview": "vite preview"
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.8",

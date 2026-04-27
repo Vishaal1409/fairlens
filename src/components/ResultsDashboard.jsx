@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   BarChart,
@@ -34,7 +34,6 @@ function useCountUp(target, duration = 1200, delay = 0, enabled = true) {
   const [display, setDisplay] = useState(0)
   useEffect(() => {
     if (!enabled) return
-    setDisplay(0)
     let raf
     const timer = setTimeout(() => {
       const start = performance.now()
@@ -184,15 +183,6 @@ function getMetricDescription(key) {
    RESULTS DASHBOARD
    ════════════════════════════════════════════════════════════════════════ */
 export default function ResultsDashboard({ data }) {
-  // ── DEBUG: trace what data shape arrives from the API ──
-  console.log('[FairLens] ResultsDashboard received data:', data)
-
-  // ── Helper: convert a raw score (0–1 decimal OR 0–100 percent) to 0–100 ──
-  function toScore(v) {
-    if (typeof v !== 'number') return null
-    return v <= 1 ? Math.round(v * 100) : Math.round(v)
-  }
-
   // ── Normalize API response ────────────────────────────────────────────
   const isFlat =
     data && typeof data === 'object' && !Array.isArray(data) &&
@@ -228,25 +218,22 @@ export default function ResultsDashboard({ data }) {
               description: getMetricDescription(key),
             }))
         : fallbackArray
-  // Fix: use toScore() to properly handle decimal (0–1) vs percent (0–100) from backend
-  const overall =
-    toScore(data?.overall_fairness_score) ??
-    toScore(data?.overallScore) ??
-    toScore(data?.score) ??
-    toScore(data?.overall) ??
-    (isFlat
-      ? (() => {
-          const nums = Object.values(data).filter(v => typeof v === 'number')
-          const avg = nums.reduce((a, b) => a + b, 0) / (nums.length || 1)
-          return toScore(avg)
-        })()
-      : 0  // true idle state — no data at all
-    )
+  const numericValues = rawMetrics
+    ? Object.values(rawMetrics).filter(v => typeof v === 'number')
+    : []
 
-  // Fix #4/#5: derive a stable key from the data so React remounts the section
-  // and all whileInView / once:true animations re-fire on dataset swap
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const dataKey = useMemo(() => JSON.stringify(Object.keys(rawMetrics ?? {})) + String(overall), [data])
+  const computedAvg = numericValues.length > 0
+    ? (numericValues.reduce((a, b) => a + b, 0) / numericValues.length) * 100
+    : null
+
+  const overall = Math.round(
+    data?.overall_fairness_score ??
+    data?.overallScore ??
+    data?.score ??
+    data?.overall ??
+    computedAvg ??
+    0
+  )
 
   const normalized = metrics.map((m) => {
     const v = typeof m.value === 'number' && m.value <= 1 ? m.value * 100 : Number(m.value) || 0
@@ -259,15 +246,25 @@ export default function ResultsDashboard({ data }) {
   const diColor =
     di > 80 ? 'fill-jscolors-accent-green' : di >= 60 ? 'fill-jscolors-accent-amber' : 'fill-jscolors-accent-red'
 
-  const groups = data?.groups || data?.protected_groups || ['Female', 'Male', 'Non-binary', 'Unknown']
-  const dist =
-    data?.outcome_distribution ||
-    [
-      { group: 'Female', privileged: 48, unprivileged: 52 },
-      { group: 'Male', privileged: 55, unprivileged: 45 },
-      { group: 'Non-binary', privileged: 41, unprivileged: 59 },
-      { group: 'Unknown', privileged: 50, unprivileged: 50 },
-    ]
+  const groups = data?.groups || data?.protected_groups ||
+    (rawMetrics ? ['Group A', 'Group B'] : ['Female', 'Male', 'Non-binary', 'Unknown'])
+
+  const dist = data?.outcome_distribution || (rawMetrics
+    ? Object.entries(rawMetrics)
+        .filter(([, v]) => typeof v === 'number')
+        .slice(0, 4)
+        .map(([key, value]) => ({
+          group: key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).slice(0, 12),
+          privileged: Math.round(value * 100),
+          unprivileged: Math.round((1 - value) * 100),
+        }))
+    : [
+        { group: 'Female', privileged: 48, unprivileged: 52 },
+        { group: 'Male', privileged: 55, unprivileged: 45 },
+        { group: 'Non-binary', privileged: 41, unprivileged: 59 },
+        { group: 'Unknown', privileged: 50, unprivileged: 50 },
+      ]
+  )
 
   const badge = scoreBadge(overall)
 
@@ -276,7 +273,7 @@ export default function ResultsDashboard({ data }) {
   const animatedDi = useCountUp(Math.round(di), 1000, 800)
 
   return (
-    <section key={dataKey} id="results" className="bg-jscolors-deep py-24">
+    <section id="results" className="bg-jscolors-deep py-24">
       <div className="mx-auto max-w-6xl px-5">
 
         {/* ── Hero Score Card ──────────────────────────────────────────── */}

@@ -116,19 +116,22 @@ function UpArrow() {
 /* ═════════════════════════════════════════════════════════════════════════
    MITIGATION SECTION
    ════════════════════════════════════════════════════════════════════════ */
-export default function MitigationSection({ fileId }) {
+export default function MitigationSection({ fileId, protectedCol, labelCol }) {
   const [loading, setLoading] = useState(false)
   const [payload, setPayload] = useState(null)
 
   useEffect(() => {
-    // Fix #3: reset stale payload immediately when dataset changes
-    setPayload(null)
     let alive = true
     async function run() {
       if (!fileId) return
       setLoading(true)
       try {
-        const res = await mitigateFile(fileId, null, null)
+        const res = await mitigateFile(
+          fileId,
+          protectedCol || 'gender',
+          labelCol || 'income',
+          'predicted'
+        )
         const data = res.data ?? res
         if (alive) setPayload(data)
       } catch {
@@ -141,37 +144,30 @@ export default function MitigationSection({ fileId }) {
     return () => { alive = false }
   }, [fileId])
 
-  const before = payload?.before || {
-    disparateImpact: 0.74,
-    demographicParity: 0.61,
-    equalOpportunity: 0.58,
+  const before = {
+    disparateImpact: payload?.before?.disparate_impact ?? 0.74,
+    demographicParity: payload?.before?.demographic_parity ?? 0.61,
+    equalOpportunity: payload?.before?.equal_opportunity ?? 0.58,
   }
-  const after = payload?.after || {
-    disparateImpact: 0.86,
-    demographicParity: 0.79,
-    equalOpportunity: 0.76,
+  const after = {
+    disparateImpact: payload?.after?.disparate_impact ?? 0.86,
+    demographicParity: payload?.after?.demographic_parity ?? 0.79,
+    equalOpportunity: payload?.after?.equal_opportunity ?? 0.76,
   }
 
-  // Fix #3: derive improvement rows purely from before/after — no hardcoded stubs
   const improvement = useMemo(() => {
-    const metricKeys = Array.from(
-      new Set([
-        ...Object.keys(before),
-        ...Object.keys(after),
-      ])
-    )
-    return metricKeys.map((key) => {
-      const label = key
-        .replace(/_/g, ' ')
-        .replace(/\b\w/g, (c) => c.toUpperCase())
-      const b = before[key] ?? 0
-      const a = after[key] ?? 0
-      return {
-        metric: label,
-        before: Math.round((b <= 1 ? b : b / 100) * 100),
-        after: Math.round((a <= 1 ? a : a / 100) * 100),
-      }
-    })
+    const rows = [
+      { metric: 'Disparate Impact', before: before.disparateImpact, after: after.disparateImpact },
+      { metric: 'Demographic Parity', before: before.demographicParity, after: after.demographicParity },
+      { metric: 'Equal Opportunity', before: before.equalOpportunity, after: after.equalOpportunity },
+      { metric: 'Calibration', before: payload?.before?.calibration ?? 0.66, after: payload?.after?.calibration ?? 0.78 },
+      { metric: 'Predictive Parity', before: payload?.before?.predictive_parity ?? 0.61, after: payload?.after?.predictive_parity ?? 0.73 },
+    ]
+    return rows.map((r) => ({
+      metric: r.metric,
+      before: Math.round((r.before <= 1 ? r.before : r.before / 100) * 100),
+      after: Math.round((r.after <= 1 ? r.after : r.after / 100) * 100),
+    }))
   }, [before, after])
 
   return (

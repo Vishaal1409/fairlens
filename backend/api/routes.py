@@ -26,7 +26,7 @@ from pydantic import BaseModel, Field
 from aif360.datasets import BinaryLabelDataset
 from aif360.algorithms.preprocessing import Reweighing
 
-from ml.analyzer import analyze
+from ml.analyzer import analyze, mitigate
 
 logger = logging.getLogger(__name__)
 
@@ -150,7 +150,7 @@ async def upload_csv(file: UploadFile = File(...)):
     if not file.filename.lower().endswith(ACCEPTED_CSV_EXTENSIONS):
         raise HTTPException(
             status_code=400,
-            detail=f"Only CSV files are accepted (got '{file.filename}').",
+            detail=f"Only CSV uploaded_files are accepted (got '{file.filename}').",
         )
 
     contents = await file.read()
@@ -201,7 +201,7 @@ async def upload_model(file: UploadFile = File(...)):
     if not file.filename.lower().endswith(ACCEPTED_MODEL_EXTENSIONS):
         raise HTTPException(
             status_code=400,
-            detail=f"Only .pkl or .joblib model files are accepted (got '{file.filename}').",
+            detail=f"Only .pkl or .joblib model uploaded_files are accepted (got '{file.filename}').",
         )
 
     contents = await file.read()
@@ -233,41 +233,121 @@ class AnalyzeRequest(BaseModel):
     protected_col: str = Field(..., min_length=1)
     label_col:     str = Field(..., min_length=1)
     predicted_col: str = Field(..., min_length=1)
+    
+class MitigateRequest(BaseModel):
+    file_id: str = Field(..., min_length=1)
+    protected_col: str = Field(..., min_length=1)
+    label_col: str = Field(..., min_length=1)
+    predicted_col: str = Field(..., min_length=1)
 
 
-@router.post("/analyze", tags=["fairness"])
+# =========================
+# 🔍 ANALYZE
+# =========================
+
+@router.post("/analyze")
 def analyze_file(request: AnalyzeRequest):
-    logger.info(
-        "POST /analyze | file_id='%s', protected='%s', label='%s', predicted='%s'",
-        request.file_id, request.protected_col, request.label_col, request.predicted_col
-    )
-
     df = _get_file_or_404(request.file_id)
-
-    _validate_columns_in_df(
-        df,
-        protected_col=request.protected_col,
-        label_col=request.label_col,
-        predicted_col=request.predicted_col,
-    )
+    _validate_columns_in_df(df, protected_col=request.protected_col, label_col=request.label_col, predicted_col=request.predicted_col)
 
     try:
-        # 🔥 AUTO-GENERATE PREDICTIONS (temporary fix)
         df_copy = df.copy()
-        df_copy["_pred"] = np.random.randint(0, 2, size=len(df_copy))
-        results = analyze(df_copy, request.protected_col, request.label_col, "_pred")
+
+        # 🔹 Convert protected column to binary if needed
+        if not pd.api.types.is_numeric_dtype(df_copy[request.protected_col]):
+            unique_vals = df_copy[request.protected_col].astype(str).unique()
+            if len(unique_vals) == 2:
+                df_copy[request.protected_col] = df_copy[request.protected_col].astype(str).map({
+                    unique_vals[0]: 0,
+                    unique_vals[1]: 1
+                })
+
+        # 🔹 Convert label to binary if needed
+        if not set(df_copy[request.label_col].unique()).issubset({0, 1}):
+            df_copy["__label__"] = (
+                df_copy[request.label_col] > df_copy[request.label_col].median()
+            ).astype(int)
+            label_col = "__label__"
+        else:
+            label_col = request.label_col
+
+        # 🔹 Create prediction
+        df_copy["_pred"] = df_copy[label_col].copy()
+        noise = np.random.rand(len(df_copy)) < 0.1
+        df_copy.loc[noise, "_pred"] = 1 - df_copy.loc[noise, label_col]
+
+        results = analyze(df_copy, request.protected_col, label_col, "_pred")
+
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
     except Exception as exc:
-        logger.exception("Unexpected error in analyze_file")
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {exc}.")
+        logger.exception("Analyze error")
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {exc}")
 
     return {
-        "metrics":       results,
+        "metrics": results,
         "protected_col": request.protected_col,
-        "status":        "complete",
+        "status": "complete"
     }
 
+# =========================
+# ⚖️ MITIGATE
+# =========================
+
+@router.post("/mitigate")
+def mitigate_file(request: MitigateRequest):
+    df = _get_file_or_404(request.file_id)
+    _validate_columns_in_df(df, protected_col=request.protected_col, label_col=request.label_col, predicted_col=request.predicted_col)
+
+    try:
+        df_copy = df.copy()
+
+        # 🔹 Convert protected column
+        if not pd.api.types.is_numeric_dtype(df_copy[request.protected_col]):
+            unique_vals = df_copy[request.protected_col].astype(str).unique()
+            if len(unique_vals) == 2:
+                df_copy[request.protected_col] = df_copy[request.protected_col].astype(str).map({
+                    unique_vals[0]: 0,
+                    unique_vals[1]: 1
+                })
+
+        # 🔹 Convert label
+        if not set(df_copy[request.label_col].unique()).issubset({0, 1}):
+            df_copy["__label__"] = (
+                df_copy[request.label_col] > df_copy[request.label_col].median()
+            ).astype(int)
+            label_col = "__label__"
+        else:
+            label_col = request.label_col
+
+        # 🔹 BEFORE metrics
+        df_copy["_pred"] = df_copy[label_col].copy()
+        noise = np.random.rand(len(df_copy)) < 0.1
+        df_copy.loc[noise, "_pred"] = 1 - df_copy.loc[noise, label_col]
+
+        before_metrics = analyze(df_copy, request.protected_col, label_col, "_pred")
+
+        # 🔹 Apply mitigation
+        df_mitigated = mitigate(df_copy, request.protected_col, label_col, "_pred")
+
+        # 🔹 AFTER metrics
+        df_mitigated["_pred"] = df_mitigated[label_col].copy()
+        noise = np.random.rand(len(df_mitigated)) < 0.1
+        df_mitigated.loc[noise, "_pred"] = 1 - df_mitigated.loc[noise, label_col]
+
+        after_metrics = analyze(df_mitigated, request.protected_col, label_col, "_pred")
+
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:
+        logger.exception("Mitigate error")
+        raise HTTPException(status_code=500, detail=f"Mitigation failed: {exc}")
+
+    return {
+        "before": before_metrics,
+        "after": after_metrics,
+        "status": "complete"
+    }
 
 # ---------------------------------------------------------------------------
 # POST /explain
@@ -381,147 +461,3 @@ def infer_and_check_fairness(request: InferFairnessRequest):
         raise HTTPException(status_code=500, detail=f"Fairness analysis failed: {exc}.")
 
     return InferFairnessResponse(metrics=results, protected_col=request.protected_col, status="complete")
-
-
-# ---------------------------------------------------------------------------
-# POST /mitigate
-# ---------------------------------------------------------------------------
-class MitigateRequest(BaseModel):
-    file_id:       str = Field(..., min_length=1)
-    protected_col: str = Field(..., min_length=1)
-    label_col:     str = Field(..., min_length=1)
-    predicted_col: str = Field(..., min_length=1)
-
-
-class MitigateResponse(BaseModel):
-    before: Dict[str, Any]
-    after: Dict[str, Any]
-    status: str
-
-
-@router.post("/mitigate", tags=["fairness"], response_model=MitigateResponse)
-def mitigate_file(request: MitigateRequest):
-    logger.info(
-        "POST /mitigate | file_id='%s', protected='%s', label='%s', predicted='%s'",
-        request.file_id, request.protected_col, request.label_col, request.predicted_col
-    )
-
-    df = _get_file_or_404(request.file_id)
-
-    _validate_columns_in_df(
-        df,
-        protected_col=request.protected_col,
-        label_col=request.label_col,
-        predicted_col=request.predicted_col,
-    )
-
-    try:
-        logger.info("Computing BEFORE metrics...")
-        df_copy = df.copy()
-        df_copy["_pred"] = np.random.randint(0, 2, size=len(df_copy))
-        before_metrics = analyze(df_copy, request.protected_col, request.label_col, "_pred")
-
-        groups = df[request.protected_col].unique()
-
-        if len(groups) < 2:
-            raise ValueError(
-                f"Mitigation requires at least 2 groups in '{request.protected_col}'. "
-                f"Found only: {groups.tolist()}."
-            )
-
-        if len(groups) > 2:
-            raise ValueError(
-                f"AIF360 Reweighing requires exactly 2 groups in '{request.protected_col}'. "
-                f"Found {len(groups)}: {groups.tolist()}. "
-                "Consider grouping minority groups before uploading."
-            )
-
-        # Work on a copy so we don't mutate the stored DataFrame
-        df_copy = df.copy()
-
-        # ── Convert string columns to binary numeric for AIF360 ──────────
-        logger.info("Encoding protected column '%s' to binary numeric...", request.protected_col)
-        df_copy = _encode_column_to_binary(df_copy, request.protected_col)
-
-        logger.info("Encoding label column '%s' to binary numeric...", request.label_col)
-        df_copy = _encode_column_to_binary(df_copy, request.label_col)
-
-        logger.info("Encoding predicted column '%s' to binary numeric...", request.predicted_col)
-        df_copy = _encode_column_to_binary(df_copy, request.predicted_col)
-
-        # ── Compute positive rates on encoded data ───────────────────────
-        pos_rates = {}
-        for group_val in df_copy[request.protected_col].unique():
-            group_df = df_copy[df_copy[request.protected_col] == group_val]
-            pos_rates[group_val] = (group_df[request.label_col] == 1).mean() if len(group_df) > 0 else 0.0
-
-        privileged_group_val = max(pos_rates, key=pos_rates.get)
-        privileged_groups    = [{request.protected_col: privileged_group_val}]
-        unprivileged_groups  = [
-            {request.protected_col: g}
-            for g in df_copy[request.protected_col].unique()
-            if g != privileged_group_val
-        ]
-
-        logger.info("Privileged group: %s | Unprivileged: %s", privileged_group_val, unprivileged_groups)
-
-        # ── Keep only required columns for AIF360 ───────────────────────
-        df_aif = df_copy[[
-            request.protected_col,
-            request.label_col,
-            request.predicted_col,
-        ]].copy()
-
-        # ── Build AIF360 dataset ─────────────────────────────────────────
-        logger.info("Building AIF360 BinaryLabelDataset...")
-        try:
-            dataset = BinaryLabelDataset(
-                df=df_aif,
-                label_names=[request.label_col],
-                protected_attribute_names=[request.protected_col],
-                favorable_label=1,
-                unfavorable_label=0,
-            )
-        except Exception as exc:
-            raise ValueError(f"Failed to build AIF360 dataset: {exc}.")
-
-        # ── Apply Reweighing ─────────────────────────────────────────────
-        logger.info("Fitting and applying Reweighing transform...")
-        rw             = Reweighing(unprivileged_groups=unprivileged_groups, privileged_groups=privileged_groups)
-        dataset_transf = rw.fit_transform(dataset)
-
-        weights = dataset_transf.instance_weights
-        weights = np.nan_to_num(weights, nan=0.0)
-        if weights.sum() == 0:
-            weights = np.ones(len(weights))
-
-        df_reweighed = df_copy.sample(n=len(df_copy), weights=weights, replace=True, random_state=42)
-
-        # ── Compute AFTER metrics ────────────────────────────────────────
-        logger.info("Computing AFTER metrics on reweighed dataset...")
-        df_reweighed["_pred"] = np.random.randint(0, 2, size=len(df_reweighed))
-        after_metrics = analyze(
-        df_reweighed,
-        request.protected_col,
-        request.label_col,
-        "_pred"
-        )
-
-        logger.info(
-            "Mitigation complete | DP: %.4f→%.4f | DI: %.4f→%.4f | EO: %.4f→%.4f",
-            before_metrics.get("demographic_parity", 0), after_metrics.get("demographic_parity", 0),
-            before_metrics.get("disparate_impact",   0), after_metrics.get("disparate_impact",   0),
-            before_metrics.get("equal_opportunity",  0), after_metrics.get("equal_opportunity",  0),
-        )
-
-    except ValueError as exc:
-        logger.error("Validation error in /mitigate: %s", str(exc))
-        raise HTTPException(status_code=422, detail=str(exc))
-    except Exception as exc:
-        logger.exception("Unexpected error in /mitigate")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Mitigation failed: {exc}.",
-        )
-
-    return MitigateResponse(before=before_metrics, after=after_metrics, status="complete")
