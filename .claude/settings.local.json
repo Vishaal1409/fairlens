@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(npm view *)",
+      "PowerShell(Select-String -Path \"C:\\\\Users\\\\shrut\\\\fairlens\\\\package-lock.json\" -Pattern '\"hasInstallScript\"' -SimpleMatch | Select-Object -First 1; Write-Output \"---\"; Select-String -Path \"C:\\\\Users\\\\shrut\\\\fairlens\\\\package-lock.json\" -Pattern '\"scripts\"' -SimpleMatch -Context 0,6 | Where-Object { $_.Context.PostContext -match 'postinstall|preinstall|install\"' } | Select-Object -First 20 | Format-List)"
+    ]
+  }
+}
