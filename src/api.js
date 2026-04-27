@@ -30,9 +30,10 @@ export const analyzeFile = (fileId, protectedAttr, targetCol, predictedCol) =>
 export const explainFile = (fileId, modelId) =>
   api.post('/explain', { file_id: fileId, model_id: modelId })
 
-export const mitigateFile = (fileId, protectedAttr, targetCol) =>
+export const mitigateFile = (fileId, protectedAttr, targetCol, predictedCol) =>
   api.post('/mitigate', {
     file_id: fileId,
-    protected_attribute: protectedAttr,
-    target_column: targetCol,
+    protected_col: protectedAttr,
+    label_col: targetCol,
+    predicted_col: predictedCol || targetCol,
   })

@@ -116,7 +116,7 @@ function UpArrow() {
 /* ═════════════════════════════════════════════════════════════════════════
    MITIGATION SECTION
    ════════════════════════════════════════════════════════════════════════ */
-export default function MitigationSection({ fileId }) {
+export default function MitigationSection({ fileId, protectedCol, labelCol }) {
   const [loading, setLoading] = useState(false)
   const [payload, setPayload] = useState(null)
 
@@ -126,7 +126,12 @@ export default function MitigationSection({ fileId }) {
       if (!fileId) return
       setLoading(true)
       try {
-        const res = await mitigateFile(fileId, null, null)
+        const res = await mitigateFile(
+          fileId,
+          protectedCol || 'gender',
+          labelCol || 'income',
+          'predicted'
+        )
         const data = res.data ?? res
         if (alive) setPayload(data)
       } catch {
@@ -139,15 +144,15 @@ export default function MitigationSection({ fileId }) {
     return () => { alive = false }
   }, [fileId])
 
-  const before = payload?.before || {
-    disparateImpact: 0.74,
-    demographicParity: 0.61,
-    equalOpportunity: 0.58,
+  const before = {
+    disparateImpact: payload?.before?.disparate_impact ?? 0.74,
+    demographicParity: payload?.before?.demographic_parity ?? 0.61,
+    equalOpportunity: payload?.before?.equal_opportunity ?? 0.58,
   }
-  const after = payload?.after || {
-    disparateImpact: 0.86,
-    demographicParity: 0.79,
-    equalOpportunity: 0.76,
+  const after = {
+    disparateImpact: payload?.after?.disparate_impact ?? 0.86,
+    demographicParity: payload?.after?.demographic_parity ?? 0.79,
+    equalOpportunity: payload?.after?.equal_opportunity ?? 0.76,
   }
 
   const improvement = useMemo(() => {
@@ -155,11 +160,8 @@ export default function MitigationSection({ fileId }) {
       { metric: 'Disparate Impact', before: before.disparateImpact, after: after.disparateImpact },
       { metric: 'Demographic Parity', before: before.demographicParity, after: after.demographicParity },
       { metric: 'Equal Opportunity', before: before.equalOpportunity, after: after.equalOpportunity },
-      { metric: 'Equalized Odds', before: 0.66, after: 0.78 },
-      { metric: 'Statistical Parity Diff', before: 0.61, after: 0.73 },
-      { metric: 'Consistency', before: 0.81, after: 0.86 },
-      { metric: 'Theil Index', before: 0.85, after: 0.90 },
-      { metric: 'Average Odds Diff', before: 0.58, after: 0.72 },
+      { metric: 'Calibration', before: payload?.before?.calibration ?? 0.66, after: payload?.after?.calibration ?? 0.78 },
+      { metric: 'Predictive Parity', before: payload?.before?.predictive_parity ?? 0.61, after: payload?.after?.predictive_parity ?? 0.73 },
     ]
     return rows.map((r) => ({
       metric: r.metric,

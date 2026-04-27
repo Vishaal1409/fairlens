@@ -93,6 +93,7 @@ export default function UploadSection({ onUpload, onAnalysis }) {
       clearTimeout(timeoutId)
       const data = res.data ?? res
       onAnalysis?.(data)
+      onColumns?.(protectedAttr, targetCol)
     } catch (e) {
       clearTimeout(timeoutId)
       if (e?.name === 'AbortError' || e?.code === 'ERR_CANCELED') {

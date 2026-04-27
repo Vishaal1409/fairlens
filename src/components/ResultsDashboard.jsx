@@ -218,16 +218,21 @@ export default function ResultsDashboard({ data }) {
               description: getMetricDescription(key),
             }))
         : fallbackArray
+  const numericValues = rawMetrics
+    ? Object.values(rawMetrics).filter(v => typeof v === 'number')
+    : []
+
+  const computedAvg = numericValues.length > 0
+    ? (numericValues.reduce((a, b) => a + b, 0) / numericValues.length) * 100
+    : null
+
   const overall = Math.round(
     data?.overall_fairness_score ??
     data?.overallScore ??
     data?.score ??
     data?.overall ??
-    (isFlat
-      ? Object.values(data).filter(v => typeof v === 'number').reduce((a, b) => a + b, 0) /
-        (Object.values(data).filter(v => typeof v === 'number').length || 1) * 100
-      : 72
-    )
+    computedAvg ??
+    0
   )
 
   const normalized = metrics.map((m) => {
@@ -241,15 +246,25 @@ export default function ResultsDashboard({ data }) {
   const diColor =
     di > 80 ? 'fill-jscolors-accent-green' : di >= 60 ? 'fill-jscolors-accent-amber' : 'fill-jscolors-accent-red'
 
-  const groups = data?.groups || data?.protected_groups || ['Female', 'Male', 'Non-binary', 'Unknown']
-  const dist =
-    data?.outcome_distribution ||
-    [
-      { group: 'Female', privileged: 48, unprivileged: 52 },
-      { group: 'Male', privileged: 55, unprivileged: 45 },
-      { group: 'Non-binary', privileged: 41, unprivileged: 59 },
-      { group: 'Unknown', privileged: 50, unprivileged: 50 },
-    ]
+  const groups = data?.groups || data?.protected_groups ||
+    (rawMetrics ? ['Group A', 'Group B'] : ['Female', 'Male', 'Non-binary', 'Unknown'])
+
+  const dist = data?.outcome_distribution || (rawMetrics
+    ? Object.entries(rawMetrics)
+        .filter(([, v]) => typeof v === 'number')
+        .slice(0, 4)
+        .map(([key, value]) => ({
+          group: key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).slice(0, 12),
+          privileged: Math.round(value * 100),
+          unprivileged: Math.round((1 - value) * 100),
+        }))
+    : [
+        { group: 'Female', privileged: 48, unprivileged: 52 },
+        { group: 'Male', privileged: 55, unprivileged: 45 },
+        { group: 'Non-binary', privileged: 41, unprivileged: 59 },
+        { group: 'Unknown', privileged: 50, unprivileged: 50 },
+      ]
+  )
 
   const badge = scoreBadge(overall)
 

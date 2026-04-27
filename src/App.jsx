@@ -13,23 +13,36 @@ import FrameMarks from './components/FrameMarks'
 import ResultsPage from './pages/ResultsPage'
 import CompareTwoDatasets from './pages/CompareTwoDatasets'
 import ErrorBoundary from './ErrorBoundary'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 /* ── Landing page (scroll) ── */
 function LandingPage() {
   const [analysisData, setAnalysisData] = useState(null)
   const [fileId, setFileId] = useState(null)
+  const [protectedCol, setProtectedCol] = useState(null)
+  const [labelCol, setLabelCol] = useState(null)
+  const resultsRef = useRef(null)
+
+  useEffect(() => {
+    if (analysisData && resultsRef.current) {
+      setTimeout(() => {
+        resultsRef.current.scrollIntoView({ behavior: 'smooth' })
+      }, 100)
+    }
+  }, [analysisData])
 
   return (
     <main className="relative z-10">
       <Hero />
       <HowItWorks />
-      <UploadSection onUpload={setFileId} onAnalysis={setAnalysisData} />
+      <UploadSection onUpload={setFileId} onAnalysis={setAnalysisData} onColumns={(p, l) => { setProtectedCol(p); setLabelCol(l) }} />
       {analysisData && (
         <>
-          <ResultsDashboard data={analysisData} />
+          <div ref={resultsRef}>
+            <ResultsDashboard data={analysisData} />
+          </div>
           <ExplainSection fileId={fileId} />
-          <MitigationSection fileId={fileId} />
+          <MitigationSection fileId={fileId} protectedCol={protectedCol} labelCol={labelCol} />
         </>
       )}
       <AboutSection />

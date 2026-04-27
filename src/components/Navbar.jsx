@@ -63,6 +63,16 @@ export default function Navbar() {
               <a
                 key={l.href}
                 href={l.href}
+                onClick={(e) => {
+                  e.preventDefault()
+                  const target = l.href.replace('#', '')
+                  const el = document.getElementById(target)
+                  if (el) {
+                    el.scrollIntoView({ behavior: 'smooth' })
+                  } else {
+                    window.location.href = '/' + l.href
+                  }
+                }}
                 className="group relative px-3 py-2 text-[13px] text-obs-dim transition hover:text-obs-text"
               >
                 <span className="relative">
@@ -85,7 +95,16 @@ export default function Navbar() {
           {/* CTA */}
           <a
             href="#audit"
-            className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-2 text-[12px] text-obs-text backdrop-blur-md transition hover:border-obs-cerulean/50 hover:bg-obs-cerulean/10"
+            onClick={(e) => {
+              e.preventDefault()
+              const el = document.getElementById('audit')
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth' })
+              } else {
+                window.location.href = '/#audit'
+              }
+            }}
+             className="group inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-4 py-2 text-[12px] text-obs-text backdrop-blur-md transition hover:border-obs-cerulean/50 hover:bg-obs-cerulean/10"
           >
             <span className="font-mono tracking-[0.2em] uppercase">Start audit</span>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="transition-transform group-hover:translate-x-0.5">
