@@ -59,38 +59,38 @@ def root():
 @app.get("/health", tags=["health"])
 def health_check():
     dependencies = {}
-    status_flag = "ok"
+    status_flag = "healthy"
 
+    # --- aif360 ---
     try:
         import aif360
         dependencies["aif360"] = getattr(aif360, "__version__", "installed")
     except ImportError:
-        status_flag = "degraded"
         dependencies["aif360"] = "missing"
+        status_flag = "degraded"
 
+    # --- fairlearn ---
     try:
         import fairlearn
         dependencies["fairlearn"] = getattr(fairlearn, "__version__", "installed")
     except ImportError:
-        status_flag = "degraded"
         dependencies["fairlearn"] = "missing"
+        status_flag = "degraded"
 
+    # --- shap ---
     try:
         import shap
         dependencies["shap"] = getattr(shap, "__version__", "installed")
     except ImportError:
-        status_flag = "degraded"
         dependencies["shap"] = "missing"
+        status_flag = "degraded"
 
-    response = {
+    return {
         "status": status_flag,
         "version": "1.0.0",
         "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
         "dependencies": dependencies,
+        "detail": "Some optional ML dependencies are missing."
+        if status_flag == "degraded"
+        else "All systems operational 🚀"
     }
-
-    if status_flag != "ok":
-        response["detail"] = "One or more ML dependencies failed to load."
-        raise HTTPException(status_code=503, detail=response)
-
-    return response
