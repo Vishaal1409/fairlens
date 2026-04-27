@@ -11,6 +11,7 @@ import ScrollProgress from './components/ScrollProgress'
 import GrainOverlay from './components/GrainOverlay'
 import FrameMarks from './components/FrameMarks'
 import ResultsPage from './pages/ResultsPage'
+import CompareTwoDatasets from './pages/CompareTwoDatasets'
 import ErrorBoundary from './ErrorBoundary'
 import { useState } from 'react'
 
@@ -75,6 +76,14 @@ export default function App() {
           element={
             <ErrorBoundary>
               <ResultsPage />
+            </ErrorBoundary>
+          }
+        />
+        <Route
+          path="/compare"
+          element={
+            <ErrorBoundary>
+              <CompareTwoDatasets />
             </ErrorBoundary>
           }
         />
