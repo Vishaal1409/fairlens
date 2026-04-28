@@ -297,19 +297,9 @@ def analyze(df: pd.DataFrame, protected_col: str, label_col: str, predicted_col:
         # Encode protected column to numeric if categorical
         if not pd.api.types.is_numeric_dtype(df_aif[protected_col]):
             unique_vals = df_aif[protected_col].astype(str).unique()
-            if len(unique_vals) != 2:
-                raise ValueError(
-                    f"AIF360 Reweighing requires exactly 2 groups in '{protected_col}'. "
-                    f"Found {len(unique_vals)}: {unique_vals.tolist()}. "
-                    f"Consider grouping minority groups before uploading."
-                )
-            logger.info(
-                "  Encoding protected column '%s': '%s'→1, '%s'→0",
-                protected_col, unique_vals[0], unique_vals[1]
-            )
-            df_aif[protected_col] = df_aif[protected_col].astype(str).map(
-                {unique_vals[0]: 1, unique_vals[1]: 0}
-            ).astype(int)
+            mapping = {val: idx for idx, val in enumerate(unique_vals)}
+            logger.info("  Encoding protected column '%s': %s", protected_col, mapping)
+            df_aif[protected_col] = df_aif[protected_col].astype(str).map(mapping).astype(int)
 
         df_aif = df_aif.select_dtypes(include=[np.number])
 

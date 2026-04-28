@@ -256,11 +256,8 @@ def analyze_file(request: AnalyzeRequest):
         # 🔹 Convert protected column to binary if needed
         if not pd.api.types.is_numeric_dtype(df_copy[request.protected_col]):
             unique_vals = df_copy[request.protected_col].astype(str).unique()
-            if len(unique_vals) == 2:
-                df_copy[request.protected_col] = df_copy[request.protected_col].astype(str).map({
-                    unique_vals[0]: 0,
-                    unique_vals[1]: 1
-                })
+            mapping = {val: idx for idx, val in enumerate(unique_vals)}
+            df_copy[request.protected_col] = df_copy[request.protected_col].astype(str).map(mapping).astype(int)
 
         # 🔹 Convert label to binary if needed
         if not set(df_copy[request.label_col].unique()).issubset({0, 1}):
