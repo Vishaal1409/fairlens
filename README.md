@@ -45,7 +45,7 @@ FairLens is an open-source AI Fairness Audit Platform that lets organizations up
 |-------|-------------|
 | **Frontend** | React 19, Vite, TailwindCSS, Recharts, Framer Motion, Axios |
 | **Backend** | Python 3.11, FastAPI, Uvicorn, AIF360, SHAP, scikit-learn, Pandas, NumPy |
-| **Testing** | Robot Framework, Postman |
+| **Testing** | Postman |
 | **DevOps** | Docker, Render (backend), GitHub Pages (frontend) |
 
 ---
@@ -77,12 +77,8 @@ fairlens/
 │   ├── App.jsx
 │   ├── main.jsx
 │   └── api.js               ← Axios API client
-├── tests/                   ← Robot Framework test suites
-│   ├── upload_validation.robot
-│   ├── analyze_endpoint.robot
-│   ├── mitigate_endpoint.robot
-│   ├── fixtures/
-│   └── postman/
+├── tests/
+│   └── postman/             ← Postman collection for API testing
 ├── assets/                  ← Built frontend assets (GitHub Pages)
 ├── dist/                    ← Vite build output
 ├── deploy.sh                ← One-command deploy script
@@ -149,12 +145,10 @@ Full contract: [API_CONTRACT.md](./API_CONTRACT.md)
 
 ---
 
-## Running Tests
+## Testing
 
-```bash
-pip install -r tests/requirements-test.txt
-robot --outputdir results tests/
-```
+Backend endpoints tested via Postman collection.
+Postman collection available in `tests/postman/`.
 
 ---
 
@@ -163,9 +157,16 @@ robot --outputdir results tests/
 | Name | Role | What they built |
 |------|------|----------------|
 | **Vishaal** | Team Lead & Backend | ML pipeline, fairness metrics, Render deployment, SHAP integration, GitHub management |
-| **Arun** | Backend & DevOps | FastAPI endpoints, Docker, Robot Framework tests |
-| **Shruthika** | Frontend & Data Viz | Rebuilt entire UI into the Obsidian Observatory design using React + Cursor, all chart components, API wiring |
+| **Arun** | Backend & DevOps | FastAPI endpoints, Docker, API testing |
+| **Shruthika** | Frontend & Data Viz | Rebuilt entire UI into the Obsidian Observatory design using React, all chart components, API wiring |
 | **Ishitha** | UI/UX & Presentation | Layout design, demo video, project deck |
+
+---
+
+## Hackathon
+
+Built for **Hack2Skill 2026** — Unbiased AI Decision challenge.
+Submission deadline: April 24, 2026.
 
 ---
 
