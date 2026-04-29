@@ -166,7 +166,7 @@ Postman collection available in `tests/postman/`.
 ## Hackathon
 
 Built for **Hack2Skill 2026** — Unbiased AI Decision challenge.
-Submission deadline: April 24, 2026.
+Submission deadline: April 28, 2026.
 
 ---
 
